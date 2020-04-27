@@ -247,5 +247,6 @@ stoptime = Sys.time()
 cat("MCMC Elapsed Time:", format(stoptime - starttime), "\n")
 
 # SAVE THE INPUTS AND OUTPUTS
+if (!dir.exists("outputs")) dir.create("outputs")
 saveRDS(jags_data, file.path("outputs", "jags_data.rds"))
 saveRDS(post, file.path("outputs", "posterior.rds"))
