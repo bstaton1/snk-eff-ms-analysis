@@ -33,4 +33,8 @@ for (i in 1:length(pkg_need_gthb)) {
 }
 
 # load all packages
-junk = suppressWarnings(sapply(c(pkg_need_cran, pkg_need_gthb), function(pkg) do.call("library", list(package = pkg))))
+junk = suppressPackageStartupMessages(
+  suppressWarnings(
+    sapply(c(pkg_need_cran, pkg_need_gthb), function(pkg) do.call("library", list(package = pkg)))
+  )
+)
