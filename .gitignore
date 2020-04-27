@@ -37,3 +37,7 @@ vignettes/*.pdf
 
 # .rds files
 *.rds
+
+# grande-ronde/outputs
+grande-ronde/outputs*
+
