@@ -25,7 +25,7 @@ jags_data = list(
   x_pred = as.matrix(dat_pred[,xnames]),
   n_pred = nrow(dat_pred),
   
-  # prior probability of each coefficient: defined in scenarios.csv and 01-parameters.R
+  # prior probability of each coefficient: defined in scenarios.csv and 02-parameters.R
   w_prior = w_prior,
   
   # mark-recap information
