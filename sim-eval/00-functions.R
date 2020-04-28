@@ -100,9 +100,46 @@ sim_unit = function(N = 50, do_mrc = T, p_mrc = 0.5, p_snk = 0.5, p_snk2 = 0, Bs
 
 ##### FUNCTIONS TO CALCULATE SUMMARIES #####
 
+# FUNCTION TO SUMMARIZE POSTERIOR FOR A MODEL FIT
+# post: an mcmc.list object from one of the fitted models
+summarize_posterior = function(post) {
+  # parameter names for each type of quantity: regex's are for postpack::post_summ
+  # group them this way for easier subsetting later
+  param_names = list(
+    train = c("^N[", "^p["),
+    pred = c("^N_pred", "^p_pred["),
+    params = c("^a$", "^b[", "^w[", "sig_site")
+  )
+  
+  # check to make sure the right stuff is regex matched under each type
+  # lapply(param_names, function(x) match_p(post, x, ubase = T))
+  
+  # summarize and format the requested posteriors
+  est_params = as.data.frame(t(
+    post_summ(post, unname(unlist(param_names)), p_summ = c(0.025, 0.1, 0.25, 0.5, 0.75, 0.9, 0.975), ess = T, Rhat = T)
+  ))
+  
+  # add a parameter type category
+  n_matches = unlist(lapply(param_names, function(x) length(match_p(post, x))))
+  est_params = cbind(group = unlist(sapply(1:length(n_matches), function(x) rep(names(n_matches)[x], n_matches[x]))), est_params)
+  
+  # make the node name a variable
+  est_params = cbind(param = rownames(est_params), base = str_remove(rownames(est_params), "\\[.+\\]"), est_params)
+  rownames(est_params) = NULL
+  est_params$base = str_remove(as.character(est_params$base), "_pred")
+  
+  # add identifier for element number
+  est_params$index = as.numeric(str_extract(est_params$param, "[:digit:]+"))
+  
+  # ensure the order is correct
+  est_params = est_params[with(est_params, order(group, base, index)),]
+  
+  # return the summary
+  return(est_params)
+}
+
 # FUNCTION TO CALCULATE ERROR SUMMARIES
-# only run after  have been conducted
-# est_params: the result of output processing steps in "04-summarize-fit.R"
+# est_params: the output of summarize_posterior()
 # base: quantity - "N" or "p"
 # type: quantity type - "pred" or "train"
 calc_bias = function(est_params, base, type) {
@@ -151,8 +188,7 @@ calc_bias = function(est_params, base, type) {
 }
 
 # FUNCTION TO SUMMARIZE WHETHER EACH COVARIATE WAS ASSIGNED THE APPROPRIATE POSTERIOR PROBABILITY OF BEING INCLUDED
-# est_params: the result of output processing steps in "04-summarize-fit.R"
-
+# est_params: the output of summarize_posterior()
 correct_select = function(est_params) {
   # posterior prob of inclusion
   w_mean = est_params[est_params$base == "w","mean"]
@@ -173,12 +209,12 @@ correct_select = function(est_params) {
   # return output: return logical vector
   return(correct)
 }
+
 # FUNCTION TO SUMMARIZE WHETHER THE TRUE VALUES FELL WITH THE ESTIMATED CREDIBLE INTERVALS
-# est_params: the result of output processing steps in "04-summarize-fit.R"
+# est_params: the output of summarize_posterior()
 # base: quantity - "N" or "p"
 # type: quantity type - "pred" or "train"
 # level: central quantile range: "50%", "80%", or "95%"
-
 calc_coverage = function(est_params, base, type, level) {
   
   # select the data frame with the correct true values
