@@ -85,7 +85,7 @@ jags_model = function() {
 
 # write model to a text file: use an arbituary random name for the file
 jags_file = paste0("model_", round(runif(1, 10000, 20000)), ".txt")
-postpack::write_model(jags_model, jags_file)
+write_model(jags_model, jags_file)
 
 ##### STEP 3: INITIAL VALUES #####
 jags_inits = function(i) {
@@ -122,7 +122,7 @@ if (mcmc_length == "short") {
 ##### STEP 6: RUN MCMC SAMPLER #####
 starttime = Sys.time()
 cat("  (fixN) MCMC Started:   ", format(starttime), "\n")
-post_fixN = jagsUI::jags.basic(
+post_fixN = jags.basic(
   data = jags_data,
   model.file = jags_file,
   parameters.to.save = jags_params,
