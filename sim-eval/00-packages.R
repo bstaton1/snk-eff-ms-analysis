@@ -10,7 +10,8 @@ pkg_need_cran = c(
   "scales",     # for transparent colors in plotting
   "jagsUI",     # for calling JAGS through R
   "remotes",    # for installing packages off of Github
-  "stringr"     # for string manipulation
+  "stringr",    # for string manipulation
+  "reshape2"    # for restructuring data (long to wide and vice versa)
   )
 
 # the list of all needed packages on B. Staton's github
