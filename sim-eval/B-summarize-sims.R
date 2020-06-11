@@ -424,7 +424,7 @@ dev.off()
 ### A SINGLE PDF THAT CONTAINS ALL OF THESE FIGURES PLUS SOME DESCRIPTIONS ###
 
 # open device
-file_device(file.path(out_dir, paste("ALL-BLOCKS", "pdf", sep = ".")), h = 5, w = 7)
+file_device(file.path(out_dir, paste("supp-B", "pdf", sep = ".")), h = 5, w = 7)
 
 ### DESCRIPTION: PAGE 1 ###
 
@@ -440,7 +440,7 @@ usr = par("usr")
 # header
 rect(0, 0.825, 1, 1, col = "black")
 text(x = 0, y = 0.95, labels = "ONLINE SUPPLEMENT TO STATON ET AL.", font = 2, pos = 4, cex = 1.2, col = "white")
-text(x = 0, y = 0.875, labels = "A hierarchical approach to joint estimation of fish abundance\nand snorkel survey detection efficiency", font = 3, pos = 4, cex = 1, col = "white")
+text(x = 0, y = 0.875, labels = "Accounting for uncertainty when estimating drivers of detection probability: \nA hierarchical approach illustrated with snorkel surveys for riverine fishes", font = 3, pos = 4, cex = 1, col = "white")
 
 # text descriptions: that apply to each page
 text(x = 0, y = 0.78, labels = 'This supplement presents output summaries from each block of simulation scenarios.\nOpen this file in your PDF viewer, select "full page view", and use page up/down to cycle through blocks.', font = 1, pos = 4, cex = 0.8)
@@ -480,7 +480,7 @@ usr = par("usr")
 # header
 rect(0, 0.825, 1, 1, col = "black")
 text(x = 0, y = 0.95, labels = "ONLINE SUPPLEMENT TO STATON ET AL.", font = 2, pos = 4, cex = 1.2, col = "white")
-text(x = 0, y = 0.875, labels = "A hierarchical approach to joint estimation of fish abundance\nand snorkel survey detection efficiency", font = 3, pos = 4, cex = 1, col = "white")
+text(x = 0, y = 0.875, labels = "Accounting for uncertainty when estimating drivers of detection probability: \nA hierarchical approach illustrated with snorkel surveys for riverine fishes", font = 3, pos = 4, cex = 1, col = "white")
 
 # table title
 text(x = 0, y = 0.70, labels = 'Scenario Descriptions', font = 2, pos = 4, cex = 0.8)
@@ -547,4 +547,3 @@ sim_composite_figure(c(6,16,17,18), "Simulation Block F: Effects of unaccounted 
 
 # close the device
 dev.off()
-
