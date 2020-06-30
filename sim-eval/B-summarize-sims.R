@@ -452,7 +452,7 @@ segments(0.01, 0.51, 0.99, 0.51, lwd = 2)
 
 # text descriptions: panels a
 text(x = 0, y = 0.48, labels = "Panels a1-4", font = 2, pos = 4, cex = 0.8)
-text(x = 0, y = 0.41, labels = "The distribution of median percent errors across replicate data sets, compared between estimation methods,\nscenario, and quantity (abundance vs. detection efficiency, training vs. prediction set). Positive values\nrepresent estimates/predictions that are higher than the true value.", font = 1, pos = 4, cex = 0.8)
+text(x = 0, y = 0.41, labels = "The distribution of median percent errors across replicate data sets, compared between estimation methods,\nscenario, and quantity (abundance vs. detection probability, training vs. prediction set). Positive values\nrepresent estimates/predictions that are higher than the true value.", font = 1, pos = 4, cex = 0.8)
 
 # text descriptions: panels b
 text(x = 0, y = 0.35, labels = "Panels b1-4", font = 2, pos = 4, cex = 0.8)
@@ -468,7 +468,7 @@ text(x = 0, y = 0.15, labels = "Distribution of the proportion of true values th
 
 # text description: panel e
 text(x = 0, y = 0.11, labels = "Panel e", font = 2, pos = 4, cex = 0.8)
-text(x = 0, y = 0.06, labels = "Distribution of the estimate of the standard deviation of site-level random detection efficiency effects.\nThe horizontal line shows the true value.", font = 1, pos = 4, cex = 0.8)
+text(x = 0, y = 0.06, labels = "Distribution of the estimate of the standard deviation of site-level random detection probability effects.\nThe horizontal line shows the true value.", font = 1, pos = 4, cex = 0.8)
 
 ### DESCRIPTION: PAGE 2 (SCENARIOS) ###
 
