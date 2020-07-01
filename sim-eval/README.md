@@ -1,8 +1,8 @@
 # Simulation Analysis
 
-This subfolder of the repo contains all data and code to complete the simulation evaluation of the hierarchical snorkel detection efficiency analysis. 
+This subfolder of the repo contains all data and code to complete the simulation evaluation of the hierarchical detection probability model. 
 
-As for the Grande Ronde application, the output of this analysis is too large to manageably store in a Git repository. If you wish to generate the output plots, you will need to re-run the simulation analyses.
+**As for the Grande Ronde application, the output of this analysis is too large to manageably store in a Git repository. If you wish to generate the output plots, you will need to re-run the simulation analyses.**
 
 ## Organization
 
@@ -14,5 +14,5 @@ The code was designed to allow flexibly changing the settings to allow different
 * `04a-fit-estimate-N.R`: Contains code to fit the hierarchical model to simulated data using JAGS
 * `04b-fit-fixed-N.R`: Contains code to fit the "external abundance method" to simulated data using JAGS
 * `05-summarize-fit.R`: Summarizes the posteriors from both estimation models for a single data set and calculates performance statistics (MPE, MAPE, coverage, variable selection)
-* `A-run-sims.R`: Runs, summarizes, and saves the output from running many replicates of a single scenario. This script is best called from the command line (e.g. Terminal), but can be ran from R alone. See the comments at the top of this script for details
+* `A-run-sims.R`: Runs, summarizes, and saves the output from running many replicates of a single scenario. This script is best called from the command line (e.g., the Terminal), but can be ran from R alone. See the comments at the top of this script for details
 * `B-summarize-sims.R`: Generates the plots found in the main text and online supplement. Should only be ran after scenarios 1 - 18 have been completed.
