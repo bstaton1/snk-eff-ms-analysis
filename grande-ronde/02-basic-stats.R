@@ -44,10 +44,3 @@ round(c(mean(omyk_p), range(omyk_p)), 2)  # mean and range for O. mykiss observa
 
 # sd of site-level random effects
 sig_site = post_summ(post, "sig_site", rnd = 2); sig_site
-
-# fraction of all observations that fell within 95% posterior prediction interval
-recaps1_ppd = post_summ(post, "recaps1_ppd")
-snk_ppd = post_summ(post, "snk_ppd")
-x = sapply(1:jags_data$n_obs, function(i) dplyr::between(jags_data$recaps1[i], recaps1_ppd[4,i], recaps1_ppd[5,i]))
-y = sapply(1:jags_data$n_obs, function(i) dplyr::between(jags_data$snk[i], snk_ppd[4,i], snk_ppd[5,i]))
-mean(x); mean(y)
