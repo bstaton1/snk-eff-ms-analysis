@@ -13,6 +13,9 @@ rm(list = ls(all = T))
 # install/load packages
 source("00-packages.R")
 
+# set the random seed: for exact reproducibility
+set.seed(999)
+
 ##### STEP 1: THE DATA #####
 
 # read in the raw data file
