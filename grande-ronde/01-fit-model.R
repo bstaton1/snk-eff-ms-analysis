@@ -36,38 +36,38 @@ mn_davg = mean(dat$davg); sd_davg = sd(dat$davg)
 # compile data into a list for JAGS
 jags_data = list(
   # dimensionals 
-  n_obs = nrow(dat),
-  n_site = length(unique(dat$site_id)),
+  n_obs = nrow(dat),                          # number of observations
+  n_site = length(unique(dat$site_id)),       # number of sites
   
   # identifiers
-  site = as.numeric(as.factor(dat$site_id)),
-  i_chin = 1,
-  i_pool = 2,
-  i_lwd2 = 3,
-  i_lwd3 = 4,
-  i_vis1 = 5,
-  i_vis3 = 6,
-  i_davg = 7,
-  i_dpli = 8,
+  site = as.numeric(as.factor(dat$site_id)),  # site identifier
+  i_chin = 1,                                 # element number for Chinook effect
+  i_pool = 2,                                 # element number for pool effect
+  i_lwd2 = 3,                                 # element number for lwd2 effect
+  i_lwd3 = 4,                                 # element number for lwd3 effect
+  i_vis1 = 5,                                 # element number for vis1 effect
+  i_vis3 = 6,                                 # element number for vis3 effect
+  i_davg = 7,                                 # element number for depth effect
+  i_dpli = 8,                                 # element number for depth by pool interaction effect
   
   # prior probability that each variable should be included in the model
-  w_chin_pr = 0.5,
-  w_pool_pr = 0.5,
-  w_lwd2_pr = 0.5,
-  w_lwd3_pr = 0.5,
-  w_vis1_pr = 0.5,
-  w_vis3_pr = 0.5,
-  w_davg_pr = 0.5,
-  w_dpli_pr = 0.5,
+  w_chin_pr = 0.5,     # chinook effect
+  w_pool_pr = 0.5,     # pool effect
+  w_lwd2_pr = 0.5,     # lwd2 effect
+  w_lwd3_pr = 0.5,     # lwd3 effect
+  w_vis1_pr = 0.5,     # vis1 effect
+  w_vis3_pr = 0.5,     # vis3 effect
+  w_davg_pr = 0.5,     # depth effect
+  w_dpli_pr = 0.5,     # depth by pool interaction effect
   
   # covariates
-  x_chin = dat$chin,
-  x_pool = dat$pl,
-  x_lwd2 = dat$lwd2,
-  x_lwd3 = dat$lwd3,
-  x_vis1 = dat$vis1,
-  x_vis3 = dat$vis3,
-  x_davg = stnd(dat$davg),
+  x_chin = dat$chin,   # Chinook (1 if Chinook, 0 otherwise)
+  x_pool = dat$pl,     # Pool (1 if unit was a pool, 0 otherwise)
+  x_lwd2 = dat$lwd2,   # Low large wood density (1 if 0 < density < median(density of all non-zero observations), 0 otherwise)
+  x_lwd3 = dat$lwd3,   # High large wood density (1 if 0 < density > median(density of all non-zero observations), 0 otherwise)
+  x_vis1 = dat$vis1,   # Poor visibility (1 if unit was rated as "poor" vis, 0 otherwise)
+  x_vis3 = dat$vis3,   # Good visibility (1 if unit was rated as "good" vis, 0 otherwise)
+  x_davg = stnd(dat$davg), # Average unit depth (continuous, centered and scaled)
   
   # mark recap
   marked = dat$marked,
@@ -102,13 +102,13 @@ deepest_pool = max(jags_data$x_davg[jags_data$x_pool == 1])
 
 # exclude cases that can't happen
 pd$bad = rep(0, nrow(pd))
-pd$bad = ifelse(pd$pd_lwd2 == 1 & pd$pd_lwd3 == 1, 1, pd$bad)
-pd$bad = ifelse(pd$pd_vis1 == 1 & pd$pd_vis3 == 1, 1, pd$bad)
-pd$bad = ifelse(pd$pd_davg < shallowest_not_pool & pd$pd_pool == 0, 1, pd$bad)
-pd$bad = ifelse(pd$pd_davg < shallowest_pool & pd$pd_pool == 1, 1, pd$bad)
-pd$bad = ifelse(pd$pd_davg > deepest_not_pool & pd$pd_pool == 0, 1, pd$bad)
-pd$bad = ifelse(pd$pd_davg > deepest_pool & pd$pd_pool == 1, 1, pd$bad)
-pd = pd[-which(pd$bad == 1),-which(colnames(pd) == "bad")]
+pd$bad = ifelse(pd$pd_lwd2 == 1 & pd$pd_lwd3 == 1, 1, pd$bad) # can't be both lwd2 and lwd3
+pd$bad = ifelse(pd$pd_vis1 == 1 & pd$pd_vis3 == 1, 1, pd$bad) # can't be bot vis1 and vis3
+pd$bad = ifelse(pd$pd_davg < shallowest_not_pool & pd$pd_pool == 0, 1, pd$bad)  # drop non-pool depths shallower than observed
+pd$bad = ifelse(pd$pd_davg < shallowest_pool & pd$pd_pool == 1, 1, pd$bad)      # drop pool depths shallower than observed
+pd$bad = ifelse(pd$pd_davg > deepest_not_pool & pd$pd_pool == 0, 1, pd$bad)     # drop non-pool depths deeper than observed
+pd$bad = ifelse(pd$pd_davg > deepest_pool & pd$pd_pool == 1, 1, pd$bad)         # drop pool depths deeper than observed
+pd = pd[-which(pd$bad == 1),-which(colnames(pd) == "bad")]                      # exclude them
 
 # add prediction covariate data to data object
 jags_data = append(jags_data, append(as.list(pd), list(n_pd = nrow(pd))))
@@ -188,9 +188,11 @@ jags_model = function() {
 
 # write model to a text file
 jags_file = "model.txt"
-postpack::write_model(jags_model, jags_file)
+write_model(jags_model, jags_file)
 
 ##### STEP 3: SPECIFY INITIAL VALUES #####
+# function creates a random set of initial values for one chain
+# input argument x is not used, necessary for lapply()
 inits_fun = function(x) {
   out = with(jags_data, {
     b_prior = runif(n_cvts, -1, 1)
