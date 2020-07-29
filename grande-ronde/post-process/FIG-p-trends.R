@@ -12,7 +12,6 @@ source("00-packages.R")
 jags_data = readRDS("outputs/jags_data.rds")
 post = readRDS("outputs/posterior.rds")
 dat = read.csv("inputs/raw_data.csv")
-dat = subset(dat, chap_cv <= 0.3 & snk/chap_est <= 1.5)
 
 # calculate average and sd depth: for backtransforming from z-scale
 mn_davg = mean(dat$davg)

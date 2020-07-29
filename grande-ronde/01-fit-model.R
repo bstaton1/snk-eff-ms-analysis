@@ -21,9 +21,6 @@ set.seed(999)
 # read in the raw data file
 dat = read.csv(file.path("inputs", "raw_data.csv"), stringsAsFactors = F)
 
-# drop records if they are greater than these cutoffs
-dat = subset(dat, chap_cv <= 0.3 & snk/chap_est <= 1.5)
-
 # function to get the minimum abundance at a unit
 # N can't be smaller than (a) the number marked + non_recaps and (b) the snorkel count
 get_min_N = function(x) {

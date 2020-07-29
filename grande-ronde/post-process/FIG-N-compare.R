@@ -17,9 +17,6 @@ dat = read.csv("inputs/raw_data.csv")
 base = "N-compare"
 out_file = file.path(out_file_dir, paste(base, out_file_type, sep = "."))
 
-# discard data that fall outside of acceptable data quality range
-dat = subset(dat, chap_cv <= 0.3 & snk/chap_est <= 1.5)
-
 # obtain posterior summary of latent abundance (median only)
 N_median = post_summ(post, "N")["50%",]
 
