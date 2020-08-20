@@ -44,3 +44,35 @@ round(c(mean(omyk_p), range(omyk_p)), 2)  # mean and range for O. mykiss observa
 
 # sd of site-level random effects
 sig_site = post_summ(post, "sig_site", rnd = 2); sig_site
+
+## summarize sample sizes
+dat = read.csv("inputs/raw_data.csv")
+
+# create a full id: site and channel unit combined
+dat$full_id = paste(dat$site_id, dat$unit_id, sep = "_")
+
+# unique sites sampled, regardless of the year
+length(unique(dat$full_id))
+
+# count how many observations per unit per year
+yr_counts = with(dat, table(full_id, year))
+
+# if a 2 is present, that means observations of both Chinook and Omykiss were made.
+# collapse this to only if it was visited
+yr_counts[yr_counts >= 1] = 1
+
+# unique channel units visited by year
+colSums(yr_counts)
+
+# number of channel units visited in one year only versus in both years
+table(rowSums(yr_counts))
+
+# number of unique sites
+length(unique(dat$site_id))
+
+# number of observations by species
+sum(dat$chin)
+sum(dat$omyk)
+
+# total observations
+nrow(dat)
