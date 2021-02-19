@@ -16,14 +16,30 @@ source("00-packages.R")
 # set the random seed: for exact reproducibility
 set.seed(999)
 
+# set the model name: for naming output
+model_name = "hypergeom"
+
 ##### STEP 1: THE DATA #####
 
+source("00-prepare-data.R")
+
 # function to get the minimum abundance at a unit
-# N can't be smaller than (a) the number marked + non_recaps and (b) the snorkel count
+# N can't be smaller than (a) the number marked + non_recaps (uniquely captured fish) or (b) the snorkel count
 get_min_N = function(x) {
   max(x["marked"] + x["non_recaps"], x["snk"])
 }
 
+# prepare mark-recapture data
+MR_list = list(
+  marked = dat$marked,
+  recaps1 = dat$recaps + 1,
+  K = dat$recaps + dat$non_recaps,
+  minN = apply(as.matrix(dat[,c("marked", "recaps", "non_recaps", "snk")]), 1, get_min_N),
+  maxN = 1000
+)
+
+# append MR info with the rest of jags_data (created in "00-prepare-data.R")
+jags_data = append(jags_data, MR_list)
 
 ##### STEP 2: SPECIFY JAGS MODEL CODE #####
 jags_model = function() {
@@ -33,68 +49,69 @@ jags_model = function() {
     N[i] <- round(Nu[i])
   }
   
-  # PRIORS: PARAMETER INDICATOR VARIABLES
-  w[i_chin] ~ dbern(w_chin_pr)
-  w[i_pool] ~ dbern(w_pool_pr)
-  w[i_lwd2] ~ dbern(w_lwd2_pr)
-  w[i_lwd3] ~ dbern(w_lwd3_pr)
-  w[i_vis1] ~ dbern(w_vis1_pr)
-  w[i_vis3] ~ dbern(w_vis3_pr)
-  w[i_davg] ~ dbern(w_davg_pr)
-  w[i_dpli] ~ dbern(w_dpli_pr * w[i_davg] * w[i_pool])
+  # PRIORS: SNORKEL MODEL COEFFICIENTS
+  alpha ~ dt(0, 1/1.566^2, 7.763)
+  for (j in 1:n_cvts) {
+    beta_draw[j] ~ dt(0, 1/1.566^2, 7.763)  # value that would be used without variable selection
+    beta[j] <- beta_draw[j] * w[j]          # value to use with variable selection
+  }
   
-  # PRIORS: LOGIT MODEL COEFFICIENTS
-  a ~ dt(0, 1/1.566^2, 7.763)
-  for (i in 1:n_cvts) {
-    b_prior[i] ~ dt(0, 1/1.566^2, 7.763)
-    b[i] <- b_prior[i] * w[i]
+  # PARAMETER INDICATOR VARIABLES: SNORKEL MODEL MAIN EFFECTS
+  for (j in 1:(n_cvts - n_intr)) {
+    w[j] ~ dbern(w_prior[j])
+  }
+  
+  # PARAMETER INDICATOR VARIABLES: SNORKEL MODEL INTERACTIVE EFFECTS
+  # i.e., only include interaction if both main effects are included
+  for (j in j_intr) {
+    w[j] ~ dbern(w_prior[j] * w[fj_intr[j]] * w[lj_intr[j]])
   }
   
   # PRIORS: RANDOM EFFECTS
-  sig_site ~ dunif(0, 5)
+  sig_epi ~ dunif(0, 5)
   for (i in 1:n_site) {
-    site_eff[i] ~ dnorm(0, 1/sig_site^2)
+    epi[i] ~ dnorm(0, 1/sig_epi^2)
   }
   
-  # LIKELIHOOD
+  # LIKELIHOOD & FIT ASSESSMENT: SNORKEL MODEL
   for (i in 1:n_obs) {
-    # likelihood for mark-recap: centralized hypergeometric
-    recaps1[i] ~ dhyper(marked[i] + 1, N[i] - marked[i], K[i] + 1, 1)
+    
+    # linear predictor for snorkel detection probability
+    logit(psi[i]) <- alpha + X[i,] %*% beta + epi[site[i]]
     
     # likelihood for snorkel data: binomial
-    snk[i] ~ dbin(p[i], N[i])
+    y[i] ~ dbin(psi[i], N[i])
     
-    # linear predictor for snorkel detection efficiency
-    logit(p[i]) <-
-      a + site_eff[site[i]] + 
-      b[i_chin] * x_chin[i] + 
-      b[i_pool] * x_pool[i] + 
-      b[i_lwd2] * x_lwd2[i] +  
-      b[i_lwd3] * x_lwd3[i] +
-      b[i_vis1] * x_vis1[i] +
-      b[i_vis3] * x_vis3[i] + 
-      b[i_davg] * x_davg[i] +
-      b[i_dpli] * x_davg[i] * x_pool[i]
+    # sample new data: could have been observed given model assumptions
+    y_new[i] ~ dbin(psi[i], N[i])
     
-    # posterior predictive distribution: binomial snorkel counts
-    snk_ppd[i] ~ dbin(p[i], N[i])
+    # expected value
+    y_hat[i] <- psi[i] * N[i]
     
-    # posterior predictive distribution: hypergeometric recaptures of tagged fish
-    recaps1_ppd[i] ~ dhyper(marked[i] + 1, N[i] - marked[i], K[i] + 1, 1)
+    # calculate residuals: Tukey-Freeman Statistic
+    y_resid_obs[i] <- (sqrt(y[i]) - sqrt(y_hat[i]))^2
+    y_resid_new[i] <- (sqrt(y_new[i]) - sqrt(y_hat[i]))^2
   }
   
-  # OBTAIN PREDICTIONS ALONG SURFACE
-  for (i in 1:n_pd) {
-    logit(pd_p[i]) <-
-      a +
-      b[i_chin] * pd_chin[i] +
-      b[i_pool] * pd_pool[i] +
-      b[i_lwd2] * pd_lwd2[i] +
-      b[i_lwd3] * pd_lwd3[i] +
-      b[i_vis1] * pd_vis1[i] +
-      b[i_vis3] * pd_vis3[i] +
-      b[i_davg] * pd_davg[i] +
-      b[i_dpli] * pd_davg[i] * pd_pool[i]
+  # LIKELIHOOD & FIT ASSESSMENT: MARK-RECAPTURE MODEL
+  for (i in 1:n_obs) {
+    # likelihood for mark-recapture: centralized hypergeometric
+    recaps1[i] ~ dhyper(marked[i] + 1, N[i] - marked[i], K[i] + 1, 1)
+    
+    # sample new data: could have been observed given model assumptions
+    recaps1_new[i] ~ dhyper(marked[i] + 1, N[i] - marked[i], K[i] + 1, 1)
+    
+    # expected value
+    recaps1_hat[i] <- K[i] * ((marked[i] + 1)/N[i])
+    
+    # calculate residuals: Tukey-Freeman Statistic
+    recaps1_resid_obs[i] <- (sqrt(recaps1[i]) - sqrt(recaps1_hat[i]))^2
+    recaps1_resid_new[i] <- (sqrt(recaps1_new[i]) - sqrt(recaps1_hat[i]))^2
+  }
+  
+  # OBTAIN PREDICTIONS ALONG SURFACE: SNORKEL MODEL
+  for (i in 1:n_pred) {
+    logit(psi_pred[i]) <- alpha + X_pred[i,] %*% beta
   }
 }
 
@@ -107,23 +124,22 @@ write_model(jags_model, jags_file)
 # input argument x is not used, necessary for lapply()
 inits_fun = function(x) {
   out = with(jags_data, {
-    b_prior = runif(n_cvts, -1, 1)
-    sig_site = runif(1, 0.2, 1)
-    a = runif(1, -1, 1)
+    beta_draw = runif(n_cvts, -1, 1)
+    sig_epi = runif(1, 0.2, 1)
+    
     w = numeric(n_cvts)
-    w[i_chin] = rbinom(1,1,w_chin_pr)
-    w[i_pool] = rbinom(1,1,w_pool_pr)
-    w[i_lwd2] = rbinom(1,1,w_lwd2_pr)
-    w[i_lwd3] = rbinom(1,1,w_lwd3_pr)
-    w[i_vis1] = rbinom(1,1,w_vis1_pr)
-    w[i_vis3] = rbinom(1,1,w_vis3_pr)
-    w[i_davg] = rbinom(1,1,w_davg_pr)
-    w[i_dpli] = rbinom(1,1,w_dpli_pr * w[i_pool] * w[i_davg])
+    for (j in 1:(n_cvts - n_intr)) {
+      w[j] = rbinom(1, 1, w_prior[j])
+    }
+    
+    for (j in j_intr) {
+      w[j] = rbinom(1, 1, w_prior[j] * w[fj_intr[j]] * w[lj_intr[j]])
+    }
     
     list(
-      a = logit(runif(1, 0.2, 0.4)), 
-      b_prior = b_prior,
-      sig_site = sig_site,
+      alpha = logit(runif(1, 0.2, 0.4)), 
+      beta_draw = beta_draw,
+      sig_epi = sig_epi,
       w = w
     )
   })
@@ -132,13 +148,16 @@ inits_fun = function(x) {
 }
 
 ##### STEP 4: SET NODES TO MONITOR #####
-jags_params = c("N", "a", "b", "w", "p", "pd_p",
-                "snk_hat", "snk_resid", "snk_ppd", "recaps1_ppd",
-                "sig_site", "site_eff"
+jags_params = c("N", "alpha", "beta", "w", "psi", "psi_pred",
+                "y_hat", "recaps1_hat",
+                "sig_epi", "epi",
+                "y_new", "recaps1_new",
+                "y_resid_obs", "y_resid_new",
+                "recaps1_resid_obs", "recaps1_resid_new"
 )
-
 ##### STEP 5: SET MCMC DIMENSIONS #####
-jags_dims = c(na = 1000, ni = 100000, nb = 10000, nt = 20, nc = 2, parallel = T)
+jags_dims = c(na = 1000, ni = 24000, nb = 10000, nt = 8, nc = 3, parallel = T)
+with(as.list(jags_dims), ni/nt * nc)
 
 ##### STEP 6: RUN THE MODEL WITH JAGS #####
 starttime = Sys.time()
@@ -148,7 +167,7 @@ post = jags.basic(
   model.file = jags_file,
   inits = lapply(1:jags_dims["nc"], inits_fun),
   parameters.to.save = jags_params,
-  n.adapt = 1000,
+  n.adapt = jags_dims["na"],
   n.iter = sum(jags_dims[c("ni", "nb")]),
   n.thin = jags_dims["nt"],
   n.burnin = jags_dims["nb"],
@@ -162,5 +181,5 @@ cat("MCMC Elapsed Time:", format(stoptime - starttime), "\n")
 
 # SAVE THE INPUTS AND OUTPUTS
 if (!dir.exists("outputs")) dir.create("outputs")
-saveRDS(jags_data, file.path("outputs", "jags_data.rds"))
-saveRDS(post, file.path("outputs", "posterior.rds"))
+saveRDS(jags_data, file.path("outputs", paste0("jags_data-", model_name, ".rds")))
+saveRDS(post, file.path("outputs", paste0("posterior-", model_name, ".rds")))
