@@ -18,100 +18,12 @@ set.seed(999)
 
 ##### STEP 1: THE DATA #####
 
-# read in the raw data file
-dat = read.csv(file.path("inputs", "raw_data.csv"), stringsAsFactors = F)
-
 # function to get the minimum abundance at a unit
 # N can't be smaller than (a) the number marked + non_recaps and (b) the snorkel count
 get_min_N = function(x) {
   max(x["marked"] + x["non_recaps"], x["snk"])
 }
 
-# function to standardize continuous covariates (z-tranform)
-stnd = function(x) {(x - mean(x))/sd(x)}
-
-# extract the average and sd average depth
-mn_davg = mean(dat$davg); sd_davg = sd(dat$davg)
-
-# compile data into a list for JAGS
-jags_data = list(
-  # dimensionals 
-  n_obs = nrow(dat),                          # number of observations
-  n_site = length(unique(dat$site_id)),       # number of sites
-  
-  # identifiers
-  site = as.numeric(as.factor(dat$site_id)),  # site identifier
-  i_chin = 1,                                 # element number for Chinook effect
-  i_pool = 2,                                 # element number for pool effect
-  i_lwd2 = 3,                                 # element number for lwd2 effect
-  i_lwd3 = 4,                                 # element number for lwd3 effect
-  i_vis1 = 5,                                 # element number for vis1 effect
-  i_vis3 = 6,                                 # element number for vis3 effect
-  i_davg = 7,                                 # element number for depth effect
-  i_dpli = 8,                                 # element number for depth by pool interaction effect
-  
-  # prior probability that each variable should be included in the model
-  w_chin_pr = 0.5,     # chinook effect
-  w_pool_pr = 0.5,     # pool effect
-  w_lwd2_pr = 0.5,     # lwd2 effect
-  w_lwd3_pr = 0.5,     # lwd3 effect
-  w_vis1_pr = 0.5,     # vis1 effect
-  w_vis3_pr = 0.5,     # vis3 effect
-  w_davg_pr = 0.5,     # depth effect
-  w_dpli_pr = 0.5,     # depth by pool interaction effect
-  
-  # covariates
-  x_chin = dat$chin,   # Chinook (1 if Chinook, 0 otherwise)
-  x_pool = dat$pl,     # Pool (1 if unit was a pool, 0 otherwise)
-  x_lwd2 = dat$lwd2,   # Low large wood density (1 if 0 < density < median(density of all non-zero observations), 0 otherwise)
-  x_lwd3 = dat$lwd3,   # High large wood density (1 if 0 < density > median(density of all non-zero observations), 0 otherwise)
-  x_vis1 = dat$vis1,   # Poor visibility (1 if unit was rated as "poor" vis, 0 otherwise)
-  x_vis3 = dat$vis3,   # Good visibility (1 if unit was rated as "good" vis, 0 otherwise)
-  x_davg = stnd(dat$davg), # Average unit depth (continuous, centered and scaled)
-  
-  # mark recap
-  marked = dat$marked,
-  recaps1 = dat$recaps + 1,
-  K = dat$recaps + dat$non_recaps,
-  minN = apply(as.matrix(dat[,c("marked", "recaps", "non_recaps", "snk")]), 1, get_min_N),
-  maxN = 1000,
-
-  # snorkel count
-  snk = dat$snk
-)
-
-# obtain the number of covariates
-jags_data = append(jags_data, list(n_cvts = sum(stringr::str_detect(names(jags_data), "^i_"))))
-
-# create an array with all combinations of covariate values: this is all for generating predicted curves
-pd = expand.grid(
-  pd_chin = c(0,1),
-  pd_pool = c(0,1),
-  pd_lwd2 = c(0,1),
-  pd_lwd3 = c(0,1),
-  pd_vis1 = c(0,1),
-  pd_vis3 = c(0,1),
-  pd_davg = seq(min(jags_data$x_davg), max(jags_data$x_davg), length = 50)
-)
-
-# depth ranges by unit type
-shallowest_not_pool = min(jags_data$x_davg[jags_data$x_pool == 0])
-shallowest_pool = min(jags_data$x_davg[jags_data$x_pool == 1])
-deepest_not_pool = max(jags_data$x_davg[jags_data$x_pool == 0])
-deepest_pool = max(jags_data$x_davg[jags_data$x_pool == 1])
-
-# exclude cases that can't happen
-pd$bad = rep(0, nrow(pd))
-pd$bad = ifelse(pd$pd_lwd2 == 1 & pd$pd_lwd3 == 1, 1, pd$bad) # can't be both lwd2 and lwd3
-pd$bad = ifelse(pd$pd_vis1 == 1 & pd$pd_vis3 == 1, 1, pd$bad) # can't be bot vis1 and vis3
-pd$bad = ifelse(pd$pd_davg < shallowest_not_pool & pd$pd_pool == 0, 1, pd$bad)  # drop non-pool depths shallower than observed
-pd$bad = ifelse(pd$pd_davg < shallowest_pool & pd$pd_pool == 1, 1, pd$bad)      # drop pool depths shallower than observed
-pd$bad = ifelse(pd$pd_davg > deepest_not_pool & pd$pd_pool == 0, 1, pd$bad)     # drop non-pool depths deeper than observed
-pd$bad = ifelse(pd$pd_davg > deepest_pool & pd$pd_pool == 1, 1, pd$bad)         # drop pool depths deeper than observed
-pd = pd[-which(pd$bad == 1),-which(colnames(pd) == "bad")]                      # exclude them
-
-# add prediction covariate data to data object
-jags_data = append(jags_data, append(as.list(pd), list(n_pd = nrow(pd))))
 
 ##### STEP 2: SPECIFY JAGS MODEL CODE #####
 jags_model = function() {
