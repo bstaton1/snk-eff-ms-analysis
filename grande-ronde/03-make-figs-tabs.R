@@ -50,3 +50,4 @@ out_file_type = "csv"
 out_file_dir = file.path("outputs", "tabs")
 if (!dir.exists(out_file_dir)) dir.create(out_file_dir)
 source(file.path("post-process", "TAB-model-probs.R"))
+source(file.path("post-process", "TAB-WAIC-values.R"))
