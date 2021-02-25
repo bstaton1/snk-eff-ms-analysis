@@ -147,13 +147,6 @@ with(as.list(jags_dims), ni/nt * nc)
 
 ##### STEP 6: RUN THE MODEL WITH JAGS #####
 
-# function to calculate WAIC
-get_WAIC = function(ppd) {
-  tmp_sum = -2 * sum(log(apply(ppd, 2, mean)))
-  pD = sum(apply(log(ppd), 2, var))
-  c(pD = pD, WAIC = tmp_sum + 2 * pD)
-}
-
 # function to fit any one of the three MR models
 fit_model = function(model) {
   
@@ -184,11 +177,20 @@ fit_model = function(model) {
   stoptime = Sys.time()
   cat("MCMC Elapsed Time:", format(stoptime - starttime), "\n")
   
+  ppd = exp(post_subset(post_info$samples, "Z_lppd", T))
+  tmp_log = log(apply(ppd, 2, mean))
+  tmp_sum = -2 * sum(tmp_log)
+  
+  # two ways of calculating pD under WAIC
+  pD1 = 2 * sum(tmp_log - apply(log(ppd), 2, mean))
+  pD2 = sum(apply(log(ppd), 2, var))  # Hooten and Hobbs indicate this way is recommended
+  
   # build the output
   out = list(
     post = post_info$samples,
-    DIC = c(pD = round(post_info$pD, 2), DIC = round(post_info$DIC, 2)),
-    WAIC = round(get_WAIC(exp(post_subset(post_info$samples, "Z_lppd", T))), 2),
+    DIC = c(pD_DIC = round(post_info$pD, 2), DIC = round(post_info$DIC, 2)),
+    WAIC1 = c(pD_WAIC1 = round(pD1, 2), WAIC1 = round(tmp_sum + 2 * pD1, 2)), 
+    WAIC2 = c(pD_WAIC2 = round(pD2, 2), WAIC2 = round(tmp_sum + 2 * pD2, 2)), 
     model = model
   )
   
@@ -198,6 +200,32 @@ fit_model = function(model) {
 # fit all three models
 mods = list("M0", "Mt", "Mb")
 out_list = lapply(mods, fit_model)
+names(out_list) = unlist(mods)
+
+# print the delta IC output
+x = t(sapply(out_list, function(x) x$WAIC1)); x[,2] - min(x[,2])
+x = t(sapply(out_list, function(x) x$WAIC2)); x[,2] - min(x[,2])
+x = t(sapply(out_list, function(x) x$DIC)); x[,2] - min(x[,2])
+
+# check MCMC convergence
+rhat_func = function(post_info) {
+  draws = posterior::as_draws_df(post_subset(post_info$post, c("^p1[", "^p2[", "^c2[", "^N[")))
+  diags = posterior::summarize_draws(draws)
+  diags$base = postpack:::drop_index(diags$variable)
+  tapply(diags$rhat, diags$base, function(x) c(mean = mean(x), min = min(x), max = max(x)))
+}
+rhat_out = lapply(out_list, rhat_func); rhat_out
+
+# check MCMC effective sample size
+ess_func = function(post_info) {
+  draws = posterior::as_draws_df(post_subset(post_info$post, c("^p1[", "^p2[", "^c2[", "^N[")))
+  diags = posterior::summarize_draws(draws)
+  diags$base = postpack:::drop_index(diags$variable)
+  tapply(diags$ess_tail, diags$base, function(x) round(c(mean = mean(x), min = min(x), max = max(x))))
+}
+ess_out = lapply(out_list, ess_func); ess_out
+
+# both Rhat and ess look good
 
 # save the inputs and outputs
 model_name = "MR-mods-only"
