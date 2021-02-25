@@ -2,7 +2,7 @@
 # SCRIPT CALCULATE BASIC SUMMARY STATISTICS FROM FITTED MODEL #
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: #
 
-# THIS FILE CAN ONLY BE RAN AFTER "01-fit-model.R" IS COMPLETE
+# THIS FILE CAN ONLY BE RAN AFTER "01-fit-model-huggins.R" IS COMPLETE
 
 # SET THE WORKING DIRECTORY TO THIS LOCATION
 # IN RSTUDIO: SESSION > SET WORKING DIRECTORY > TO SOURCE FILE LOCATION
@@ -13,37 +13,44 @@ rm(list = ls(all = T))
 # install/load packages
 source("00-packages.R")
 
-# load output
-post = readRDS(file.path("outputs", "posterior.rds"))
-jags_data = readRDS(file.path("outputs", "jags_data.rds"))
+# read in model inputs and outputs
+jags_data = readRDS("outputs/jags_data-huggins-Mt.rds")
+post = readRDS("outputs/posterior-huggins-Mt.rds")
 
 ##### DIAGNOSTIC SUMMARIES #####
-# extract the Rhat and effective MCMC samples from summaries
-diags = t(post_summ(post, c("N", "^a", "^b", "^w", "^p[", "sig_site", "site_eff"), Rhat = T, ess = T)[c("Rhat", "ess"),])
+# 'postpack' way
+# NOTE: the diagnostic calculations found in postpack (v0.5.2) are no longer the recommended best practice
+# diags = t(post_summ(post, c("^N[", "alpha", "beta", "^w[", "^p1[", "^p2[", "sig_epi", "epi"), Rhat = T, neff = T)[c("Rhat", "neff"),])
 
-# remove nodes that had the same value each iteration
-diags = diags[-which(diags[,"Rhat"] == "NaN"),]
+# 'posterior' way
+# NOTE: this package contains the most currently accepted best practices for diagnostic calculations
+# see https://mc-stan.org/posterior/index.html for details on 'posterior'
+# see http://www.stat.columbia.edu/~gelman/research/published/rhat.pdf for details on the revised Rhat/ESS calculations
+post_sub = post_subset(post, c("^N[", "alpha", "beta", "^w[", "^p1[", "^p2[", "sig_epi", "epi"))
+diags = posterior::summarize_draws(posterior::as_draws_df(post_sub), rhat = posterior::rhat, ess_tail = posterior::ess_tail, ess_mean = posterior::ess_mean)
 
 # top 10 worst Rhat stats
-head(diags[order(diags[,"Rhat"], decreasing = T),], 10)
+head(diags[order(diags[,"rhat"], decreasing = T),], 10)
 
-# top 10 worst ess stats
-head(diags[order(diags[,"ess"]),], 10)
+# top 10 worst ess_tail stats
+head(diags[order(diags[,"ess_tail"]),], 10)
+
+# top 10 worst ess_tail stats
+head(diags[order(diags[,"ess_mean"]),], 10)
 
 # verify the mean(w) is similar across chains
-w = post_subset(post, "w")
-matrix(unlist(lapply(w, colMeans)), nrow = 2, byrow = T)
+barplot(t(post_summ(post, "^w", by_chain = T)["mean",,]), beside = T)
 
 # summaries of detection efficiency by species
-p = post_summ(post, "^p[")
-chin_p = p[3,jags_data$x_chin == 1]
-omyk_p = p[3,jags_data$x_chin == 0]
+psi = post_summ(post, "^psi[")
+chin_psi = psi["mean",jags_data$X[,"chin"] == 1]
+omyk_psi = psi["mean",jags_data$X[,"chin"] == 0]
 
-round(c(mean(chin_p), range(chin_p)), 2)  # mean and range for chinook observations
-round(c(mean(omyk_p), range(omyk_p)), 2)  # mean and range for O. mykiss observations
+round(c(mean(chin_psi), range(chin_psi)), 2)  # mean and range for chinook observations
+round(c(mean(omyk_psi), range(omyk_psi)), 2)  # mean and range for O. mykiss observations
 
 # sd of site-level random effects
-sig_site = post_summ(post, "sig_site", rnd = 2); sig_site
+sig_epi = post_summ(post, "sig_epi", digits = 2); sig_epi
 
 ## summarize sample sizes
 dat = read.csv("inputs/raw_data.csv")
