@@ -137,7 +137,7 @@ inits_fun = function(x) {
     }
     
     list(
-      alpha = logit(runif(1, 0.2, 0.4)), 
+      alpha = qlogis(runif(1, 0.2, 0.4)), 
       beta_draw = beta_draw,
       sig_epi = sig_epi,
       w = w
