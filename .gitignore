@@ -41,6 +41,9 @@ vignettes/*.pdf
 # grande-ronde/outputs
 grande-ronde/outputs*
 
+# grande-ronde/scratch
+grande-ronde/scratch*
+
 # sim-eval/outputs
 sim-eval/output*
 
