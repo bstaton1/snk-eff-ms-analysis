@@ -3,55 +3,57 @@
 # :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: #
 
 # clear the workspace
-rm(list = setdiff(ls(), c("out_file_dir", "out_file_type")))
+rm(list = setdiff(ls(), c("out_file_dir", "out_file_type", "file_device")))
 
 # load packages
 source("00-packages.R")
 
 # read in model inputs and outputs
-jags_data = readRDS("outputs/jags_data.rds")
-post = readRDS("outputs/posterior.rds")
+jags_data = readRDS("outputs/jags_data-huggins-Mt.rds")
+post = readRDS("outputs/posterior-huggins-Mt.rds")
 dat = read.csv("inputs/raw_data.csv")
 
 # calculate average and sd depth: for backtransforming from z-scale
 mn_davg = mean(dat$davg)
 sd_davg = sd(dat$davg)
 
-# bulid file name
+# build file name
 base = "p-trends"
 out_file = file.path(out_file_dir, paste(base, out_file_type, sep = "."))
 
 # PREPARE THE PREDICTION X AND Y VALUES
 
 # X VALUES
-pd = as.data.frame(jags_data[stringr::str_detect(names(jags_data), "^pd_")])
+pred_X = as.data.frame(jags_data$X_pred)
 cats = data.frame(
-  spp = ifelse(pd$pd_chin == 1, "CH", "OM"),
-  unit = ifelse(pd$pd_pool == 1, "pool", "not_pool"),
-  lwd = ifelse(pd$pd_lwd2 == 0 & pd$pd_lwd3 == 0, "none", ifelse(pd$pd_lwd2 == 1, "some", "lots")),
-  vis = ifelse(pd$pd_vis1 == 0 & pd$pd_vis3 == 0, "average", ifelse(pd$pd_vis1 == 1, "poor", "good")),
-  davg = pd$pd_davg,
+  spp = ifelse(pred_X$chin == 1, "CH", "OM"),
+  unit = ifelse(pred_X$pool == 1, "pool", "not_pool"),
+  lwd = ifelse(pred_X$lwd2 == 0 & pred_X$lwd3 == 0, "none", ifelse(pred_X$lwd2 == 1, "some", "lots")),
+  vis = ifelse(pred_X$vis1 == 0 & pred_X$vis3 == 0, "average", ifelse(pred_X$vis1 == 1, "poor", "good")),
+  davg = pred_X$davg,
   stringsAsFactors = F
 )
 
 # Y VALUES
-pd_p = t(post_summ(post, "pd_p"))
+pred_psi = t(post_summ(post, "psi_pred["))
 
 # COMBINE THEM
-preds = cbind(cats, pd_p)
+preds = cbind(cats, pred_psi)
 
 # PREPARE THE OBSERVED DATA: X VALUES
+obs_X = as.data.frame(jags_data$X)
+
 fits = data.frame(
-  spp = ifelse(jags_data$x_chin == 0, "OM", "CH"),
-  unit = ifelse(jags_data$x_pool == 0, "not_pool", "pool"),
-  lwd = ifelse(jags_data$x_lwd2 == 1, "some", ifelse(jags_data$x_lwd3 == 1, "lots", "none")),
-  vis = ifelse(jags_data$x_vis1 == 1, "poor", ifelse(jags_data$x_vis3 == 1, "good", "average")),
-  davg = jags_data$x_davg,
+  spp = ifelse(obs_X$chin == 0, "OM", "CH"),
+  unit = ifelse(obs_X$pool == 0, "not_pool", "pool"),
+  lwd = ifelse(obs_X$lwd2 == 1, "some", ifelse(obs_X$lwd3 == 1, "lots", "none")),
+  vis = ifelse(obs_X$vis1 == 1, "poor", ifelse(obs_X$vis3 == 1, "good", "average")),
+  davg = obs_X$davg,
   stringsAsFactors = F
 )
 
 # COMBINE FITTED VALUES WITH X VALUES
-fits = cbind(fits, as.data.frame(t(post_summ(post, "^p["))))
+fits = cbind(fits, as.data.frame(t(post_summ(post, "^psi["))))
 
 # set the plotting character based on unit type
 fits$pch = ifelse(fits$unit == "not_pool", 21, 24)
@@ -84,12 +86,12 @@ panel_fun = function(SPP, VIS, LWD) {
   
   # lines for each unit type
   with(subset(pred_sub, unit == "pool"), {
-    lines(`50%` ~ davg, lwd = 2, lty = 2)
+    lines(`mean` ~ davg, lwd = 2, lty = 2)
     lines(`2.5%` ~ davg, lty = 2)
     lines(`97.5%` ~ davg, lty = 2)
   })
   with(subset(pred_sub, unit == "not_pool"), {
-    lines(`50%` ~ davg, lwd = 2, lty = 1)
+    lines(`mean` ~ davg, lwd = 2, lty = 1)
     lines(`2.5%` ~ davg, lty = 1)
     lines(`97.5%` ~ davg, lty = 1)
   })
@@ -97,7 +99,7 @@ panel_fun = function(SPP, VIS, LWD) {
   # points and credible intervals for observations
   with(fit_sub, {
     segments(davg, `2.5%`, davg, `97.5%`, col = scales::alpha("grey20", 0.4))
-    points(`50%` ~ davg, pch = pch, cex = 1.5, bg = scales::alpha("grey20", 0.4), col = "black")
+    points(`mean` ~ davg, pch = pch, cex = 1.5, bg = scales::alpha("grey20", 0.4), col = "black")
   })
 
   # draw axes. Depth is z-transformed, so have to back transform to put it on meters scale

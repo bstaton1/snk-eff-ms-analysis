@@ -9,19 +9,19 @@ rm(list = setdiff(ls(), c("out_file_dir", "out_file_type")))
 source("00-packages.R")
 
 # read in model inputs and outputs
-jags_data = readRDS("outputs/jags_data.rds")
-post = readRDS("outputs/posterior.rds")
+jags_data = readRDS("outputs/jags_data-huggins-Mt.rds")
+post = readRDS("outputs/posterior-huggins-Mt.rds")
 
-# bulid file name
+# build file name
 base = "model-probs"
 out_file = file.path(out_file_dir, paste(base, out_file_type, sep = "."))
 
 # extract covariate names
-cvt_names = names(jags_data)[stringr::str_detect(names(jags_data), "^i")]
+cvt_names = colnames(jags_data$X)
 cvt_names_nice = c("Chinook", "Pool", "LWD2", "LWD3", "VIS1", "VIS3", "Depth", "Depth x Pool")
 
 # extract the samples of the w terms each mcmc iteration
-w_samps = post_subset(post, "w", matrix = T)
+w_samps = post_subset(post, "^w[", matrix = T)
 
 # combine this into a model code sampled each mcmc iteration
 m_samps = apply(w_samps, 1, function(w_iter) paste(w_iter, collapse = "-"))
@@ -33,7 +33,7 @@ m_counts = sort(table(m_samps), decreasing = T)
 m_probs = m_counts/sum(m_counts)
 
 # create a basic (ugly) table
-mod_table = t(sapply(names(m_probs), function(x) as.logical(as.numeric(unlist(stringr::str_split(x, "-"))))))
+mod_table = t(sapply(names(m_probs), function(x) as.logical(as.numeric(unlist(str_split(x, "-"))))))
 
 # replace T/F with "+" or ""
 mod_table = t(apply(mod_table, 1, function(x) ifelse(x, "+", "")))
