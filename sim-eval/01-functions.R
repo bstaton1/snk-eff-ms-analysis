@@ -554,3 +554,17 @@ compare_plot = function(true, est, main = "", error_bars = F, ylab = "Estimated 
   points(x = true, y = est[3,], pch = 21, col = "skyblue4", bg = "skyblue2")
 }
 
+summarize_diags = function(est_params) {
+
+  diags = est_params[,c("intN", "base", "group", "ess_mean", "ess_median", "rhat", "ess_q2.5", "ess_q97.5")]
+  
+  diags$base_group = paste0(diags$base, "-", diags$group)
+  
+  ess_out = aggregate(ess_mean ~ intN + base_group, data = diags, FUN = function(x) c(mean = round(mean(x)), min = ifelse(length(x) == 1, "--", round(min(x)))))
+  rhat_out = aggregate(rhat ~ intN + base_group, data = diags, FUN = function(x) c(mean = round(mean(x), 3), max = ifelse(length(x) == 1, "--", round(max(x), 3))))
+  
+  diags = merge(ess_out, rhat_out, by = c("intN", "base_group"))
+  
+  return(diags)
+}
+
