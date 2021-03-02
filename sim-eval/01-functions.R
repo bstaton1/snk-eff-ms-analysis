@@ -148,6 +148,52 @@ sim_unit = function(N = 50, do_mrc = T, p1 = 0.5, p2 = 0.5, c2 = 0.5, psi = 0.5,
   )
 }
 
+##### FUNCTION TO EDIT JAGS CODE #####
+
+# THE MODELS THAT ESTIMATE MR PARAMETERS HAVE MODEL M0 HARD-CODED
+# THIS FUNCTION EDITS THAT CODE PRIOR TO FITTING TO CHANGE THE ASSUMPTION
+
+# M0: p1 only free parameter; p1 == p2 == c2
+# Mt: p1 and p2 free independent parameters: p1 != p2; p2 == c2
+# Mb: p1 and c2 free independent parameters: p1 == p2; p2 != c2
+
+set_MR_model = function(model = "M0") {
+  
+  # error handle
+  if (!(model %in% c("M0", "Mb", "Mt"))) {
+    stop ("model must be one of 'M0', 'Mt', or 'Mb'")
+  }
+  
+  # write the general model to a temporary text file
+  tmp_file = tempfile(fileext = ".txt")
+  write_model(jags_code_general, tmp_file)
+  
+  # read this file back in
+  x = readLines(tmp_file)
+  
+  # delete the temporary file
+  unlink(tmp_file)
+  
+  # if the model is Mo, no changes needed
+  if (model == "M0") {
+    out = x
+  }
+  
+  # if model is Mt, estimate p2 in addition to p1, and set c2 equal to p2
+  if (model == "Mt") {
+    out = str_replace(x, "p2\\[i\\] <- p1\\[i\\]", "p2\\[i\\] ~ dbeta\\(1, 1\\)")
+    out = str_replace(out, "c2\\[i\\] <- p1\\[i\\]", "c2\\[i\\] <- p2\\[i\\]")
+  }
+  
+  # if model is Mb, estimate c2 in addition to p1, p2 remains the same as p1
+  if (model == "Mb") {
+    out = str_replace(x, "c2\\[i\\] <- p1\\[i\\]", "c2\\[i\\] ~ dbeta\\(1, 1\\)" )
+  }
+  
+  writeLines(out, tmp_file)
+  return(tmp_file)
+}
+
 ##### FUNCTIONS TO CALCULATE SUMMARIES #####
 
 # FUNCTION TO SUMMARIZE POSTERIOR FOR A MODEL FIT
