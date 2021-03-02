@@ -92,8 +92,14 @@ dat_train = dat[dat$train_unit,]  # training data: has snorkel, covariate, and m
 dat_pred = dat[!dat$train_unit,]  # prediction data: has snorkel and covariate data but no mark-recap 
 
 # add mark-recapture estimates to the training data
-# different ways of obtaining non-bayesian abundance estimates
-dat_train$N_est_hyper = apply(dat_train, 1, function(i) hyper_fit(unlist(i), correct = T, inc_snk = T))
-dat_train$N_est_chap = apply(dat_train, 1, function(i) chap_fit(unlist(i)))
-dat_train$N_se_chap = apply(dat_train, 1, function(i) chap_se_fit(unlist(i)))
-dat_train$N_est_lp = apply(dat_train, 1, function(i) lp_fit(unlist(i)))
+# use three different huggins models
+N_mle_M0 = N_mle_Mt = N_mle_Mb = NULL
+for (i in 1:nrow(dat_train)) {
+  N_mle_M0 = rbind(N_mle_M0, fit_huggins(get_CH(dat_train)[i,], model = "M0"))
+  N_mle_Mt = rbind(N_mle_Mt, fit_huggins(get_CH(dat_train)[i,], model = "Mt"))
+  N_mle_Mb = rbind(N_mle_Mb, fit_huggins(get_CH(dat_train)[i,], model = "Mb"))
+}
+
+dat_train$N_est_M0 = N_mle_M0$N
+dat_train$N_est_Mt = N_mle_Mt$N
+dat_train$N_est_Mb = N_mle_Mb$N

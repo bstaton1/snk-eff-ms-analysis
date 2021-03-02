@@ -321,84 +321,146 @@ calc_coverage = function(est_params, base, type, level) {
 
 ##### FUNCTIONS TO ESTIMATE ABUNDANCE USING NON-BAYESIAN METHODS #####
 
-# FUNCTION TO FIT A BASIC LINCOLN-PETERSEN ESTIMATOR
-# X: a vector with elements: "marked", "recaps", "non_recaps", and "snk" (the output of sim_unit())
-lp_fit = function(X) {
-  if (X["recaps"] > 0) {
-    round(unname((sum(X[c("non_recaps", "recaps")]) * X["marked"])/X["recaps"]))
-  } else {
-    NA
-  }
+# funtion to take the output of sim_unit() and convert the counts of recaps/non_recaps/marks
+# to counts of the observable capture histories (11, 10, 01)
+# as needed by the Huggins method
+get_CH = function(obs) {
+  cbind(z_11 = obs$recaps, z_10 = obs$marked - obs$recaps, z_01 = obs$non_recaps)
 }
 
-# FUNCTION TO FIT A BASIC CHAPMAN ESTIMATOR
-# X: a vector with elements: "marked", "recaps", "non_recaps", and "snk" (the output of sim_unit())
-chap_fit = function(X) {
-  round(unname((((sum(X[c("non_recaps", "recaps")]) + 1) * (X["marked"] + 1))/(X["recaps"] + 1)) - 1))
-}
-
-# FUNCTION TO OBTAIN THE SE OF THE BASIC CHAPMAN ESTIMATOR
-# X: a vector with elements: "marked", "recaps", "non_recaps", and "snk" (the output of sim_unit())
-chap_se_fit = function(X) {
-  n1 = X["marked"]
-  n2 = sum(X[c("non_recaps", "recaps")])
-  m2 = X["recaps"]
+# function to estimate abundance from MR data using Huggins conditional likelihood and MLE methods
+# z is a three element vector with elements z_11, z_10,z_01 representing capture history counts
+# model is one of "M0", "Mt", "Mb"
+# this function is applied to one MR study at a time, i.e., oncee per channel unit
+fit_huggins = function(z, model) {
   
-  round(unname(((n1 + 1) * (n2 + 1) * (n1 - m2) * (n2 - m2))/((m2 + 1)^2 * (m2 + 2))), 2)
-}
-
-# FUNCTION TO FIT MARK-RECAPTURE ESTIMATOR USING MLE
-# X: a vector with elements: "marked", "recaps", "non_recaps", and "snk" (the output of sim_unit())
-# correct: logical, do you wish to apply the chapman modification?
-# inc_snk: includes the snorkel count as informing the smallest possible abundance?
-  # if TRUE, prevents abundance estimate from being smaller than the snorkel count
-hyper_fit = function(X, correct = F, inc_snk = F) {
-  # hypergeometric random process (from ?rhyper):
-    # models the number of white balls drawn from an urn
-    # in which the total number of balls is known,
-    # as is the ratio between white and black balls
-      # x: number of white balls drawn without replacement
-      # m: number of white balls in the urn
-      # n: number of black balls in the urn
-      # k: number of balls drawn from the urn
-  
-  # if white and black are tagged and untagged fish, respectively
-    # x = recaps
-    # m = tagged
-    # n = abundance - tagged
-    # k = recaps + non_recaps
-  
-  # for hypergeometric, population can't be smaller than the total novel captures in MRC
-  # option to also include the snorkel count as being the smallest possible abundance
-  minN = max(sum(X[c("marked", "non_recaps")]), ifelse(inc_snk, X["snk"], 0))
-  
-  # largest possible abundance
-  maxN = 1000
-  
-  # vector of possible abundances: will calculate the neg. log. like at each of these
-  N_hyp = seq(minN, maxN)
-  
-  # apply the basic logLik calculation: if not correcting
-  if (!correct) {
-    logLik = dhyper(
-      x = unname(X["recaps"]),
-      m = X["marked"],
-      n = N_hyp - X["marked"],
-      k = sum(X[c("recaps", "non_recaps")]),
-      log = T
-    )
-  } else { # apply the corrected logLik calculation if requested
-    logLik = dhyper(
-      x = unname(X["recaps"]) + 1, 
-      m = X["marked"] + 1, 
-      n = N_hyp - X["marked"], 
-      k = sum(X[c("recaps", "non_recaps")]) + 1,
-      log = T
-    )
+  # error handle
+  if (!(model %in% c("M0", "Mb", "Mt"))) {
+    stop ("model must be one of 'M0', 'Mt', or 'Mb'")
   }
   
-  # return the N hypothesis associated with the lowest negative logLik
-  N_hyp[which.min(-logLik)]
+  # likelihood function: model M0
+  f_M0 = function(theta, z, nll_only = F) {
+    # name parameters/set assumptions
+    p1 = plogis(theta[1])
+    p2 = plogis(theta[1])
+    c2 = plogis(theta[1])
+    
+    # probability of being captured at all in either period
+    p_star = 1 - (1 - p1) * (1 - p2)
+    
+    # probability vector for expected frequency of 3 observable capture histories
+    pi = c(
+      Pr_11 = (p1 * c2)/p_star,
+      Pr_10 = (p1 * (1 - c2))/p_star,
+      PR_01 = ((1 - p1) * p2)/p_star
+    )
+    
+    # output object
+    out = list(
+      p1 = p1, p2 = p2, c2 = c2,
+      pi = pi, p_star = p_star,
+      N = round(sum(z)/p_star),
+      nll = -dmultinom(x = z, size = sum(z), prob = pi, log = T)
+    )
+    
+    # return only the nll if requested
+    if (nll_only) return(out$nll) else return(out)
+  }
+  
+  # likelihood function: model Mt
+  f_Mt = function(theta, z, nll_only = F) {
+    # name parameters/set assumptions
+    p1 = plogis(theta[1])
+    p2 = plogis(theta[2])
+    c2 = plogis(theta[2])
+    
+    # probability of being captured at all in either period
+    p_star = 1 - (1 - p1) * (1 - p2)
+    
+    # probability vector for expected frequency of 3 observable capture histories
+    pi = c(
+      Pr_11 = (p1 * c2)/p_star,
+      Pr_10 = (p1 * (1 - c2))/p_star,
+      PR_01 = ((1 - p1) * p2)/p_star
+    )
+    
+    # output object
+    out = list(
+      p1 = p1, p2 = p2, c2 = c2,
+      pi = pi, p_star = p_star,
+      N = round(sum(z)/p_star),
+      nll = -dmultinom(x = z, size = sum(z), prob = pi, log = T)
+    )
+    
+    # return only the nll if requested
+    if (nll_only) return(out$nll) else return(out)
+  }
+  
+  # likelihood function: model Mb
+  f_Mb = function(theta, z, nll_only = F) {
+    # name parameters/set assumptions
+    p1 = plogis(theta[1])
+    p2 = plogis(theta[1])
+    c2 = plogis(theta[2])
+    
+    # probability of being captured at all in either period
+    p_star = 1 - (1 - p1) * (1 - p2)
+    
+    # probability vector for expected frequency of 3 observable capture histories
+    pi = c(
+      Pr_11 = (p1 * c2)/p_star,
+      Pr_10 = (p1 * (1 - c2))/p_star,
+      PR_01 = ((1 - p1) * p2)/p_star
+    )
+    
+    # output object
+    out = list(
+      p1 = p1, p2 = p2, c2 = c2,
+      pi = pi, p_star = p_star,
+      N = round(sum(z)/p_star),
+      nll = -dmultinom(x = z, size = sum(z), prob = pi, log = T)
+    )
+    
+    # return only the nll if requested
+    if (nll_only) return(out$nll) else return(out)
+  }
+  
+  # decide the right function to use
+  f = switch(model,
+             "M0" = f_M0,
+             "Mt" = f_Mt,
+             "Mb" = f_Mb
+  )
+  
+  # set the initial value: optimize in logit space
+  par_init = switch(model,
+                    "M0" = qlogis(0.5),
+                    "Mt" = rep(qlogis(0.5), 2),
+                    "Mb" = rep(qlogis(0.5), 2)
+  )
+  
+  # set the lower bound for optimization: logit values less than negative 5 are ~=0
+  lwr_bound = switch(model,
+                     "M0" = -5,
+                     "Mt" = rep(-5, 2),
+                     "Mb" = rep(-5, 2)
+  )
+  
+  # set the upper bound for optimization: logit values less than 5 are ~=1
+  upr_bound = lwr_bound * -1
+  
+  # optimize: minimize the neg. log likelihood
+  fit = optim(
+    par = par_init,
+    fn = f, z = z, nll_only = T, lower = lwr_bound, upper = upr_bound, method = "L-BFGS-B"
+  )
+  
+  # plug MLEs back into function to obtain all relevant info at MLE
+  out = as.data.frame(t(unlist(f(fit$par, z = z))))
+  out = cbind(model = model, out)
+  
+  return(out)
 }
 
 ##### PLOTTING FUNCTIONS #####
