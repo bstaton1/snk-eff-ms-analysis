@@ -202,21 +202,18 @@ summarize_posterior = function(post) {
   # parameter names for each type of quantity: regex's are for postpack::post_summ
   # group them this way for easier subsetting later
   param_names = list(
-    train = c("^N[", "^p["),
-    pred = c("^N_pred", "^p_pred["),
-    params = c("^a$", "^b[", "^w[", "sig_site")
+    train = c("^N[", "^psi["),
+    pred = c("^N_pred", "^psi_pred["),
+    params = c("^alpha", "^beta[", "^w[", "sig_epi")
   )
-  
-  # check to make sure the right stuff is regex matched under each type
-  # lapply(param_names, function(x) match_p(post, x, ubase = T))
   
   # summarize and format the requested posteriors
   est_params = as.data.frame(t(
-    post_summ(post, unname(unlist(param_names)), p_summ = c(0.025, 0.1, 0.25, 0.5, 0.75, 0.9, 0.975), ess = T, Rhat = T)
+    post_summ(post, unname(unlist(param_names)), probs = c(0.025, 0.1, 0.25, 0.5, 0.75, 0.9, 0.975))
   ))
   
   # add a parameter type category
-  n_matches = unlist(lapply(param_names, function(x) length(match_p(post, x))))
+  n_matches = unlist(lapply(param_names, function(x) length(match_params(post, x))))
   est_params = cbind(group = unlist(sapply(1:length(n_matches), function(x) rep(names(n_matches)[x], n_matches[x]))), est_params)
   
   # make the node name a variable
@@ -227,8 +224,21 @@ summarize_posterior = function(post) {
   # add identifier for element number
   est_params$index = as.numeric(str_extract(est_params$param, "[:digit:]+"))
   
+  # calculate convergence diagnostics
+  draws_obj = as_draws_df(post_subset(post, unlist(param_names)))
+  diags1 = summarize_draws(draws_obj, ess_mean, ess_median, rhat)
+  diags2 = summarize_draws(draws_obj, ess_quantile, .args = list(probs = c(0.025, 0.975)))
+  diags = merge(diags1, diags2, by = "variable")
+  colnames(diags)[1] = "param"
+  
+  # merge convergence diagnostics with the rest of the summary information
+  est_params = merge(est_params, diags, by = "param")
+  
   # ensure the order is correct
   est_params = est_params[with(est_params, order(group, base, index)),]
+  
+  # reorder the columns
+  est_params = est_params[,c("param", "base", "index", "group", "mean", "sd", "2.5%", "10%", "25%", "50%", "75%", "90%", "97.5%", "ess_mean", "ess_median", "rhat", "ess_q2.5", "ess_q97.5")]
   
   # return the summary
   return(est_params)
@@ -236,7 +246,7 @@ summarize_posterior = function(post) {
 
 # FUNCTION TO CALCULATE ERROR SUMMARIES
 # est_params: the output of summarize_posterior()
-# base: quantity - "N" or "p"
+# base: quantity - "N" or "psi"
 # type: quantity type - "pred" or "train"
 calc_bias = function(est_params, base, type) {
   
@@ -254,15 +264,15 @@ calc_bias = function(est_params, base, type) {
   
   # decide which variables to summarize, and what summary stat 
   # should be used for the point estimate
-  if (base == "p") {
-    true_val = "p_snk"
+  if (base == "psi") {
+    true_val = "psi"
     pt_est = "50%"
   } else {
     if (base == "N") {
       true_val = "N"
       pt_est = "50%"
     } else {
-      stop ("base must be one of 'N' or 'p'")
+      stop ("base must be one of 'N' or 'psi'")
     }
   }
   
@@ -280,7 +290,7 @@ calc_bias = function(est_params, base, type) {
   errors = (est - true)/true
   
   # summarize across samples
-  c(MPE = median(errors), MAPE = median(abs(errors)))
+  c(median_PE = median(errors), median_APE = median(abs(errors)), mean_PE = mean(errors), mean_APE = mean(abs(errors)))
 }
 
 # FUNCTION TO SUMMARIZE WHETHER EACH COVARIATE WAS ASSIGNED THE APPROPRIATE POSTERIOR PROBABILITY OF BEING INCLUDED
@@ -308,7 +318,7 @@ correct_select = function(est_params) {
 
 # FUNCTION TO SUMMARIZE WHETHER THE TRUE VALUES FELL WITH THE ESTIMATED CREDIBLE INTERVALS
 # est_params: the output of summarize_posterior()
-# base: quantity - "N" or "p"
+# base: quantity - "N" or "psi"
 # type: quantity type - "pred" or "train"
 # level: central quantile range: "50%", "80%", or "95%"
 calc_coverage = function(est_params, base, type, level) {
@@ -326,18 +336,18 @@ calc_coverage = function(est_params, base, type, level) {
   }
   
   # decide which variables to summarize
-  if (base == "p") {
-    true_val = "p_snk"
+  if (base == "psi") {
+    true_val = "psi"
   } else {
     if (base == "N") {
       true_val = "N"
     } else {
-      stop ("base must be one of 'N' or 'p'")
+      stop ("base must be one of 'N' or 'psi'")
     }
   }
   
   # error check
-  if (level %!in% c("50%", "80%", "95%")) {
+  if (!(level %in% c("50%", "80%", "95%"))) {
     stop ("requested level is not accepted. must be one of '50%', '80%', or '95%'")
   }
   
