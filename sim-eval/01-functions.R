@@ -568,3 +568,29 @@ summarize_diags = function(est_params) {
   return(diags)
 }
 
+# create a function that can produce either pdf, png, or jpg output figures depending on filename extension
+file_device = function(file_name, width, height) {
+  # extract the extension type
+  file_type = str_remove(str_extract(basename(file_name), "\\.([[:alnum:]]+)$"), "\\.")
+  
+  # return error if it is not a supported one
+  if (!(file_type %in% c("pdf", "png", "jpg"))) stop ("That file type is not supported. Extension must be pdf, png, or jpg")
+  
+  # create the device for pdf type
+  if (file_type == "pdf") {
+    pdf(file_name, width = width, height = height)
+  }
+  
+  # create the device for the png or jpg types
+  if (file_type %in% c("png", "jpg")) {
+    res = 600
+    h_use = res * height
+    w_use = res * width
+    if (file_type == "png") {
+      png(file_name, width = w_use, height = h_use, res = res)
+    } else {
+      jpeg(file_name, width = w_use, height = h_use, res = res)
+    }
+  }
+}
+
