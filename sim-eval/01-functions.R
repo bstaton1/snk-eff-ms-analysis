@@ -10,6 +10,16 @@ execute = function(text) {
   eval(parse(text = text))
 }
 
+# function to perform logit transformation
+logit = function(x) {
+  log(x/(1 - x))
+}
+
+# function to perform inverse logit transformation
+expit = function(x) {
+  exp(x)/(1 + exp(x))
+}
+
 ##### FUNCTIONS TO SIMULATE DATA #####
 
 # FUNCTION TO CREATE BERNOULLI RANDOM VARIABLES
