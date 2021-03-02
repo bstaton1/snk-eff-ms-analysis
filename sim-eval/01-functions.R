@@ -27,6 +27,46 @@ expit = function(x) {
 # prob: the probability of success
 rbern = function(n, prob) as.logical(rbinom(n, size = 1, prob = prob))
 
+# FUNCTION TO CREATE CAPTURE PROBABILITIES FOR MARK-RECAPTURE
+create_mrc_params = function(p_beta, true_model, c2_mult = NA) {
+  
+  # error handles
+  if (!(true_model %in% c("M0", "Mb", "Mt"))) {
+    stop ("true_model must be one of 'M0', 'Mt', or 'Mb'")
+  }
+  
+  if (true_model == "Mb" & is.na(c2_mult)) {
+    stop ("if the model is Mb, you must specify the c2_mult argument")
+  }
+  
+  if (true_model != "Mb" & !is.na(c2_mult)) {
+    stop ("if the model is not Mb, set c2_mult to NA")
+  }
+  
+  # sample the first period parameter
+  p1 = rbeta(1, p_beta[1], p_beta[2])
+  
+  # depending on the selection of the true model, set the value of other parameters
+  if (true_model == "M0") {
+    p2 = p1
+    c2 = p1
+  }
+  
+  if (true_model == "Mt") {
+    p2 = rbeta(1, p_beta[1], p_beta[2])
+    c2 = p2
+  }
+  
+  if (true_model == "Mb") {
+    p2 = p1
+    c2 = p2 * c2_mult
+  }
+  
+  out_probs = c(mrc_p1 = p1, mrc_p2 = p2, mrc_c2 = c2)
+  
+  return(out_probs)
+}
+
 # FUNCTION TO SIMULATE DATA AT ANY GIVEN CHANNEL UNIT
 # N: true abundance in the channel unit
 # do_mrc: should mrc data be simulated?
