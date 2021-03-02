@@ -70,44 +70,43 @@ create_mrc_params = function(p_beta, true_model, c2_mult = NA) {
 # FUNCTION TO SIMULATE DATA AT ANY GIVEN CHANNEL UNIT
 # N: true abundance in the channel unit
 # do_mrc: should mrc data be simulated?
-# p_mrc: probability of capture for mark-recapture, same in first and second periods
-# p_snk: probability of detection for snorkel surveys
-# p_snk2: probability of double counting a fish via snorkel survey: Pr(second count|counted once)
+# p1, p2, c2: (re)capture probabilities in MRC
+# psi: probability of detection for snorkel surveys
+# psi2: probability of double counting a fish via snorkel survey: Pr(second count|counted once)
 # Bsum: sum of beta distribution parameters governing between-group variability in snorkel detection probability
   # bigger values mean less variability between groups
   # 1e10 is essentially no variability between groups
   # the aggregate N is partitioned randomly among three groups
   # intended to represent possibly clusters, different species, size classes, etc.
-  # of fish within a channel unit that can show different p_snk around the main one for that channel unit
+  # of fish within a channel unit that can show different psi around the main one for that channel unit
   # this is a mechanism to introduce overdispersion into the snorkel count data
-sim_unit = function(N = 50, do_mrc = T, p_mrc = 0.5, p_snk = 0.5, p_snk2 = 0, Bsum = 1e10) {
+sim_unit = function(N = 50, do_mrc = T, p1 = 0.5, p2 = 0.5, c2 = 0.5, psi = 0.5, psi2 = 0, Bsum = 1e10) {
 
   ### MARK-RECAPTURE SIMULATION ###
   if (do_mrc) {
     
     # REPEAT THE MARK-RECAPTURE SIMULATION UNTIL AT LEAST ONE FISH IS MARKED AND RECAPTURED
-    # cap1 and cap2 are binary indicators for each fish in first and second periods, respectively
-    # 1 means captured, 0 means not
-    # summing these vectors gives the total sample numbers in each period
-    # summing (cap1 * cap2) gives recaptures: captured in both periods
+    # cap1 and cap2 are indicators for each fish in first and second periods, respectively
+    # TRUE means captured, FALSE means not
+
     marked = 0; recaps = 0
     while(marked < 1 | recaps < 1) {
       # WAS EACH FISH CAPTURED IN THE FIRST PERIOD? (ALL OF THESE ARE TAGGED AND RELEASED)
-      cap1 = rbern(n = N, prob = p_mrc)
+      cap1 = rbern(n = N, prob = p1)
       
       # WAS EACH FISH CAPTURED IN THE SECOND PERIOD?
-      cap2 = rbern(n = N, prob = p_mrc)
+      cap2 = rbern(n = N, prob = ifelse(cap1, c2, p2))
       
       # HOW MANY WERE MARKED IN FIRST PERIOD?
       marked = sum(cap1)
       
       # OF THE SECOND PERIOD CAPTURES, HOW MANY WERE MARKED?
-      recaps = sum(cap1 * cap2)
+      recaps = sum(cap1 & cap2)
       
       # OF THE SECOND PERIOD CAPTURES, HOW MANY WERE NOT MARKED?
-      non_recaps = sum(cap2) - recaps
+      non_recaps = sum(cap2 & !cap1)
     }
-  } else {  # if not doing mark-recap for this occasion
+  } else {  # if not doing mark-recap for this observation, skip it
     marked = NA
     recaps = NA
     non_recaps = NA
@@ -123,23 +122,24 @@ sim_unit = function(N = 50, do_mrc = T, p_mrc = 0.5, p_snk = 0.5, p_snk2 = 0, Bs
   N_per_group = as.numeric(rmultinom(1, N, prob = rep(1/n_groups, n_groups)))
   
   # GENERATE DETECTION PROB FOR FISH IN EACH GROUP:
-  # beta random variables around p_snk for this unit
-  p_snk_per_group = rbeta(n_groups, p_snk * Bsum, (1 - p_snk) * Bsum)
+  # beta random variables around psi for this unit
+  psi_per_group = rbeta(n_groups, psi * Bsum, (1 - psi) * Bsum)
   
   # WAS EACH FISH COUNTED ONCE?
   # the sapply loops through groups, unlist disaggregates groups to obtain a single vector
-  snk1 = unlist(sapply(1:n_groups, function(i) rbern(N_per_group[i], p_snk_per_group[i])))
+  snk1 = unlist(sapply(1:n_groups, function(i) rbern(N_per_group[i], psi_per_group[i])))
   
   # WAS EACH FISH DOUBLE COUNTED VIA SNORKEL SURVEY?
   # all fish have same prob of being counted twice given they were counted once
-  # the multiplication of p_snk2 * snk1 says that if snk1 is 0, Pr(count again) = 0
-  snk2 = rbern(N, p_snk2 * snk1)
+  # the multiplication of psi2 * snk1 enforces that if snk1 is 0, Pr(count again) = 0
+  snk2 = rbern(N, psi2 * snk1)
   
   # TOTAL RECORDED SNORKEL COUNT
+  # sum fish counted once and twice
   snk = sum(c(snk1, snk2))
   
   ### BUNDLE OUTPUT ###
-  # these are the "data" that would be recorded for all fish data at a channel unit
+  # these are the count data that would be recorded for all fish data at a channel unit
   c(
     marked = marked,
     recaps = recaps,
