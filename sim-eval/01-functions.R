@@ -25,7 +25,7 @@ expit = function(x) {
 # FUNCTION TO CREATE BERNOULLI RANDOM VARIABLES
 # n: number of random variables
 # prob: the probability of success
-rbern = function(n, prob) rbinom(n, size = 1, prob = prob)
+rbern = function(n, prob) as.logical(rbinom(n, size = 1, prob = prob))
 
 # FUNCTION TO SIMULATE DATA AT ANY GIVEN CHANNEL UNIT
 # N: true abundance in the channel unit
