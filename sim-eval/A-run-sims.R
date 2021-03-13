@@ -23,7 +23,7 @@ mcmc_length = as.character(cl_args[4])
 l_iter = f_iter + n_iter - 1
 
 # directory to store output
-out_dir = "output-test2"
+out_dir = "output"
 
 # output file name
 out_file = paste0("output-", "s", 
