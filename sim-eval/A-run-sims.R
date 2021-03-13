@@ -3,43 +3,21 @@
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: #
 
 # clear the workspace
-rm(list = setdiff(ls(), "cl_args"))
+rm(list = ls(all = T))
 
 # load packages
 source("00-packages.R")
 start_all = Sys.time()
 
-# this script is intended to be called via command line.
-# this allows running multiple scenarios at once without even opening R
-# but it requires you use a command line (like Terminal or Powershell)
-# Note that each call to this script requires two cores of your processor: MCMC computation runs two chains in parallel
-
-# for example: Rscript A-run-sims.R 4 1 10 long
-  # will run scenario 4 with 10 iterations starting at iteration id #1 with long MCMC settings
-
-# for example: Rscript A-run-sims.R
-  # will request user to input these settings
-
-# but it can also be passed to source() from R, but you must create a cl_args object
-# for example:
-# cl_args = c(4, 1, 10, "long")
-# source("A-run-sims.R")
+# DO NOT RUN THIS SCRIPT DIRECTLY/INTERACTIVELY
+# INSTEAD, RUN THE FILE "RUN-SCENARIO.bat"
 
 # extract arguments passed via command line
-if (!exists("cl_args")) cl_args = commandArgs(trailingOnly = T)
+cl_args = commandArgs(trailingOnly = T)
 s = as.numeric(cl_args[1])
 f_iter = as.numeric(cl_args[2])
 n_iter = as.numeric(cl_args[3])
 mcmc_length = as.character(cl_args[4])
-
-# read user input if not passed via command line
-if (!interactive() & length(cl_args) == 0) {
-  cat("Scenario: ");         s = as.numeric(readLines("stdin", n = 1));
-  cat("First Iteration: ");  f_iter = as.numeric(readLines("stdin", n = 1))
-  cat("Total Iterations: "); n_iter = as.numeric(readLines("stdin", n = 1))
-  cat("MCMC Length (short, medium, long): "); mcmc_length = as.character(readLines("stdin", n = 1))
-  cat("\n")
-}
 
 # last iteration
 l_iter = f_iter + n_iter - 1
@@ -56,18 +34,25 @@ out_file = paste0("output-", "s",
 # objects to keep between iterations
 keep = c(
   # output objects
-  "bias_out", "coverage_out", "correct_w_out", "est_params_out", "dat_out",
+  "bias_out", "coverage_out", "correct_w_out", "est_params_out", "dat_out", "mrc_model_used_out",
   "out_dir", "out_file",
   
   # looping objects
   "iter", "f_iter", "l_iter", "n_iter", "start_all",
   
   # control objects
-  "s", "mcmc_length", 
+  "s", "mcmc_length", "jags_dims",
   
   # this object
   "keep"
   )
+
+# set MCMC dimensions based on user input
+jags_dims = switch(mcmc_length,
+       short = c(na = 100, ni = 2400, nb = 1000, nt = 2, nc = 3),
+       medium = c(na = 1000, ni = 12000, nb = 2500, nt = 4, nc = 3),
+       long = c(na = 1000, ni = 24000, nb = 5000, nt = 8, nc = 3)
+)
 
 # containers for output
 bias_out = NULL
@@ -75,6 +60,7 @@ coverage_out = NULL
 correct_w_out = NULL
 est_params_out = NULL
 dat_out = NULL
+mrc_model_used_out = NULL
 
 # print a message at the start of this batch
 cat("---------------------------------------------\n")
@@ -91,6 +77,9 @@ for (iter in f_iter:l_iter) {
   cat("Iteration #: ", iter, " (", iter - f_iter + 1, " of ", n_iter, ")", "\n", sep = "")
   cat("---------------------------------------------\n")
   
+  # set the random seed
+  set.seed(iter)
+  
   # read in functions
   source("01-functions.R")
   
@@ -100,9 +89,15 @@ for (iter in f_iter:l_iter) {
   # generate stochastic true information and observed data
   source("03-data-sim.R")
   
-  # fit the models
-  source("04a-fit-estimate-N.R")  # treat N as a latent state
-  source("04b-fit-fixed-N.R")     # treat N as fixed data
+  # if need to use WAIC to select best MRC model, fit those models
+  if (assume_mrc_model == "WAIC") {
+    source("04a-fit-mrc-only.R")
+    assume_mrc_model = WAIC_best_model
+  }
+  
+  # fit the snorkel models
+  source("04b-fit-external.R")  # treat N as fixed data when estimating snorkel survey detection probability
+  source("04c-fit-integrated.R")     # treat N as unknown quantity when estimating snorkel survey detection probability
   
   # summarize the posterior output for this iteration
   source("05-summarize-fit.R")
@@ -113,6 +108,11 @@ for (iter in f_iter:l_iter) {
   correct_w = cbind(scenario = s, iter = iter, correct_w)
   est_params = cbind(scenario = s, iter = iter, est_params)
   dat = cbind(scenario = s, iter = iter, dat)
+  mrc_model_used = data.frame(scenario = s, iter = iter, model = assume_mrc_model)
+  
+  # print MCMC diagnostic summaries
+  cat("Diagnostic Summaries:\n")
+  print(summarize_diags(est_params))
   
   # combine output from this iteration with previous iterations
   bias_out = rbind(bias_out, bias)
@@ -120,6 +120,7 @@ for (iter in f_iter:l_iter) {
   correct_w_out = rbind(correct_w_out, correct_w)
   est_params_out = rbind(est_params_out, est_params)
   dat_out = rbind(dat_out, dat)
+  mrc_model_used_out = rbind(mrc_model_used_out, mrc_model_used)
   
   # clear the workspace of everything specific to this iteration
   rm(list = setdiff(ls(), keep))
@@ -132,14 +133,19 @@ out = list(
   coverage = coverage_out,
   correct_w = correct_w_out,
   est_params = est_params_out,
-  dat = dat_out
+  dat = dat_out,
+  mrc_model_used = mrc_model_used_out
 )
 
 # write the output
 if (!dir.exists(out_dir)) dir.create(out_dir)
 saveRDS(out, file.path(out_dir, out_file))
 
+# print a message about where to find the output
+cat("Output saved in location:\n")
+cat("  ", file.path(getwd(), out_dir, out_file), "\n")
+
 # print a simulation finished message
 stop_all = Sys.time()
 cat("Simulation Elapsed: ", format(stop_all - start_all, digits = 2), "\n")
-cat("----------------- Scenario #", s, " ---------------\n", sep = "")
+cat("----------- Scenario #", s, " Complete ------------\n", sep = "")

@@ -228,7 +228,7 @@ jags_params = c("N", "alpha", "beta", "w", "psi", "psi_pred",
                 "Z_resid_obs", "Z_resid_new"
 )
 ##### STEP 5: SET MCMC DIMENSIONS #####
-jags_dims = c(na = 1000, ni = 24000, nb = 10000, nt = 8, nc = 3, parallel = T)
+jags_dims = c(na = 1000, ni = 24000, nb = 5000, nt = 8, nc = 3, parallel = T)
 with(as.list(jags_dims), ni/nt * nc)
 
 ##### STEP 6: RUN THE MODEL WITH JAGS #####

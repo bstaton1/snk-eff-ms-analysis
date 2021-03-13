@@ -35,6 +35,9 @@ b = c(
   -0.8              # true effects for interaction: x1 * x4
   )
 
+# prior probabilities on the indicator variables
+w_prior = execute(scenarios[scenarios$scenario == s,"w_prior"])
+
 # standard deviation of logit-scale site level random effects (channel units are nested within sites)
 sigma_site = 0.3
 
@@ -45,17 +48,26 @@ sigma_unknown = execute(scenarios[scenarios$scenario == s,"sigma_unknown"])
 Bsum = execute(scenarios[scenarios$scenario == s,"Bsum"])
 
 # probability each fish is counted a second time given it is counted once
-p_snk2 = execute(scenarios[scenarios$scenario == s,"p_snk2"])
+psi2 = execute(scenarios[scenarios$scenario == s,"psi2"])
 
 ### TRUE ABUNDANCE ###
 # these roughly match the distribution of abundances for the Grande Ronde data set
-# if you apply the chapman estimator to the mark-recap data
-N_mu = 50     # negative binomial mean abundance
+# if you apply the Huggins Mt estimator to the mark-recap data
+N_mu = 60     # negative binomial mean abundance
 N_r  = 1      # negative binomial overdispersion
 
-### MARK-RECAP SAMPLING ###
-# parameters of the beta distribution that governs between-unit capture efficiency in mark-recapture sampling
+### MARK-RECAP ###
+# see function 'create_mrc_params()' for details on how this is used
+# parameters of the beta distribution that governs between-unit capture probability in mark-recapture sampling
 p_mrc_beta = execute(scenarios[scenarios$scenario == s,"p_mrc_beta"])
 
-# prior probabilities on the indicator variables
-w_prior = execute(scenarios[scenarios$scenario == s,"w_prior"])
+# the true model for mark-capture data
+true_mrc_model = scenarios[scenarios$scenario == s,"mrc_true"]
+
+# the model JAGS will assume is true
+assume_mrc_model = scenarios[scenarios$scenario == s,"mrc_assume"]
+
+# when the true model is Mb, what is the multipler to change p2 to c2?
+c2_mult = scenarios[scenarios$scenario == s,"c2_mult"]
+
+

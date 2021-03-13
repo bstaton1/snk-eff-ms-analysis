@@ -40,13 +40,13 @@ site_eff = round(rnorm(length(unique(site_id)), 0, sigma_site), 2)
 unknown_eff = round(rnorm(n_units, 0, sigma_unknown), 2)
 
 # logit-scale detection efficiency
-lp_snk = apply(X, 1, function(x) a + sum(b * x[xnames]) + site_eff[x["site_id"]]) + unknown_eff
+lpsi = apply(X, 1, function(x) a + sum(b * x[xnames]) + site_eff[x["site_id"]]) + unknown_eff
 
 # obtain probability-scale detection efficiency
-p_snk = round(expit(lp_snk), 2)
+psi = round(expit(lpsi), 2)
 
 # combine these with the covariate, abundance, and identifier information
-X = cbind(X, site_eff = site_eff[X[,"site_id"]], unknown_eff = unknown_eff, p_snk)
+X = cbind(X, site_eff = site_eff[X[,"site_id"]], unknown_eff = unknown_eff, psi)
 
 ### DETERMINE IF EACH UNIT WAS SAMPLED FOR MRC ###
 # randomly select channel units for mark-recapture sampling
@@ -57,6 +57,16 @@ X$train_unit = ifelse(X$unit_id %in% train_units, T, F)
 # probability of capture for mark-recapture 
 X$p_mrc = ifelse(X$train_unit, round(rbeta(n_train_units, p_mrc_beta[1], p_mrc_beta[2]), 2), NA)
 
+# depending on whether the channel unit is a training unit, simulate capture probabilities
+mrc_probs = t(sapply(1:nrow(X), function(i) {
+  if (X$train_unit[i]) {
+    out = round(create_mrc_params(p_mrc_beta, true_mrc_model, c2_mult), 2)
+  } else {
+    out = c(mrc_p1 = NA, mrc_p2 = NA, mrc_c2 = NA)
+  }
+}))
+X = cbind(X, mrc_probs)
+
 # create observed fish data at each channel unit
 # loops through channel units and supplies the specific info to sim_unit()
 obs_dat = t(
@@ -64,9 +74,11 @@ obs_dat = t(
     sim_unit(
       N      = as.numeric(X[i,"N"]), 
       do_mrc = X$train_unit[i], 
-      p_mrc  = X$p_mrc[i], 
-      p_snk  = as.numeric(X[i,"p_snk"]), 
-      p_snk2 = p_snk2,
+      p1     = X$mrc_p1[i], 
+      p2     = X$mrc_p2[i], 
+      c2     = X$mrc_c2[i], 
+      psi    = as.numeric(X[i,"psi"]), 
+      psi2   = psi2,
       Bsum   = Bsum
     )
   })
@@ -80,8 +92,14 @@ dat_train = dat[dat$train_unit,]  # training data: has snorkel, covariate, and m
 dat_pred = dat[!dat$train_unit,]  # prediction data: has snorkel and covariate data but no mark-recap 
 
 # add mark-recapture estimates to the training data
-# different ways of obtaining non-bayesian abundance estimates
-dat_train$N_est_hyper = apply(dat_train, 1, function(i) hyper_fit(unlist(i), correct = T, inc_snk = T))
-dat_train$N_est_chap = apply(dat_train, 1, function(i) chap_fit(unlist(i)))
-dat_train$N_se_chap = apply(dat_train, 1, function(i) chap_se_fit(unlist(i)))
-dat_train$N_est_lp = apply(dat_train, 1, function(i) lp_fit(unlist(i)))
+# use three different huggins models
+N_mle_M0 = N_mle_Mt = N_mle_Mb = NULL
+for (i in 1:nrow(dat_train)) {
+  N_mle_M0 = rbind(N_mle_M0, fit_huggins(get_CH(dat_train)[i,], model = "M0"))
+  N_mle_Mt = rbind(N_mle_Mt, fit_huggins(get_CH(dat_train)[i,], model = "Mt"))
+  N_mle_Mb = rbind(N_mle_Mb, fit_huggins(get_CH(dat_train)[i,], model = "Mb"))
+}
+
+dat_train$N_est_M0 = N_mle_M0$N
+dat_train$N_est_Mt = N_mle_Mt$N
+dat_train$N_est_Mb = N_mle_Mb$N
