@@ -16,3 +16,12 @@ The code was designed to allow flexibly changing the settings to allow different
 * `05-summarize-fit.R`: Summarizes the posteriors from both estimation models for a single data set and calculates performance statistics (MPE, MAPE, coverage, variable selection)
 * `A-run-sims.R`: Runs, summarizes, and saves the output from running many replicates of a single scenario. This script is best called from the command line (e.g., the Terminal), but can be ran from R alone. See the comments at the top of this script for details
 * `B-summarize-sims.R`: Generates the plots found in the main text and online supplement. Should only be ran after scenarios 1 - 18 have been completed.
+
+The file `RUN-SCENARIO.bat` is a batch file that enables running many replicates of a single scenario easily. Simply double-click this file to execute it, then you will be prompted to provide some input values:
+
+* Scenario number: an integer between 1 and 24, which is one of the scenarios described in Table 2 of the text.
+* First iteration number: an integer of any positive value -- this is an individual identifier for the replicate, and is also the random seed for that replicate. 
+* Number of iterations: an integer of any positive value -- iteration IDs will sequence up from the first iteration number provided for this many iterations.
+* MCMC run time: short, medium, or long -- defines how long to run sampling for; "long" was used for all manuscript analyses, "short" is for testing code only.
+
+This process will need to be repeated for each scenario (i.e., 24 times) before the script `B-summarize-sims.R` can be executed. One instance of `RUN-SCENARIO.bat` will take up three processor cores on your computer, so if you have many more than this, you can run mulitple instances simultaneously. You can determine how many cores can be used by running `parallel::detectCores()` in R.
