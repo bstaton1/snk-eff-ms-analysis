@@ -86,12 +86,12 @@ panel_fun = function(SPP, VIS, LWD) {
   
   # lines for each unit type
   with(subset(pred_sub, unit == "pool"), {
-    lines(`mean` ~ davg, lwd = 2, lty = 2)
+    lines(`50%` ~ davg, lwd = 2, lty = 2)
     lines(`2.5%` ~ davg, lty = 2)
     lines(`97.5%` ~ davg, lty = 2)
   })
   with(subset(pred_sub, unit == "not_pool"), {
-    lines(`mean` ~ davg, lwd = 2, lty = 1)
+    lines(`50%` ~ davg, lwd = 2, lty = 1)
     lines(`2.5%` ~ davg, lty = 1)
     lines(`97.5%` ~ davg, lty = 1)
   })
@@ -99,7 +99,7 @@ panel_fun = function(SPP, VIS, LWD) {
   # points and credible intervals for observations
   with(fit_sub, {
     segments(davg, `2.5%`, davg, `97.5%`, col = scales::alpha("grey20", 0.4))
-    points(`mean` ~ davg, pch = pch, cex = 1.5, bg = scales::alpha("grey20", 0.4), col = "black")
+    points(`50%` ~ davg, pch = pch, cex = 1.5, bg = scales::alpha("grey20", 0.4), col = "black")
   })
 
   # draw axes. Depth is z-transformed, so have to back transform to put it on meters scale

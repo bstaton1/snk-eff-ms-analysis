@@ -21,8 +21,8 @@ source("00-packages.R")
 out_dir = "output"
 
 # file type for individual figure files
-# file_type = "pdf"
-file_type = "png"
+file_type = "pdf"
+# file_type = "png"
 
 ##### READ IN ALL SIMULATION OUTPUT #####
 
@@ -55,7 +55,7 @@ for (i in 1:length(files)) {
   mrc_model_used = rbind(mrc_model_used, tmp$mrc_model_used[!(tmp$mrc_model_used$iter %in% bad_iters),])
 }
 
-tapply(dat$iter, dat$scenario, function(x) length(unique(x)))
+tapply(dat$iter, dat$scenario, function(x) length(unique(x))) - 100
 
 table(mrc_model_used$scenario, mrc_model_used$model)
 
@@ -426,7 +426,7 @@ sim_composite_figure(c(6,7,8,9), "Simulation Block C: Over-dispersed binomial co
 dev.off()
 
 file_device(file.path(out_dir, paste("block-D", file_type, sep = ".")), h = 5, w = 7)
-sim_composite_figure(c(10,11,12), "Simulation Block D: Individuals can be double-counted")
+sim_composite_figure(c(6,10,11,12), "Simulation Block D: Individuals can be double-counted")
 dev.off()
 
 file_device(file.path(out_dir, paste("block-E", file_type, sep = ".")), h = 5, w = 7)
@@ -438,11 +438,11 @@ sim_composite_figure(c(6,16,17,18), "Simulation Block F: Effects of unaccounted 
 dev.off()
 
 file_device(file.path(out_dir, paste("block-G", file_type, sep = ".")), h = 5, w = 7)
-sim_composite_figure(c(6,19,20,21), "Simulation Block G: Unaccounted trap shy behavior")
+sim_composite_figure(c(6,19,20,21), "Simulation Block G: Unaccounted recapture avoidance")
 dev.off()
 
 file_device(file.path(out_dir, paste("block-H", file_type, sep = ".")), h = 5, w = 7)
-sim_composite_figure(c(6,22,23,24), "Simulation Block H: Accounted trap shy behavior")
+sim_composite_figure(c(6,22,23,24), "Simulation Block H: Accounted recapture avoidance")
 dev.off()
 
 with(mrc_model_used, table(scenario, model))

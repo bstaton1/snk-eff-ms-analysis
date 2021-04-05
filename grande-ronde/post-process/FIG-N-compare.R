@@ -153,7 +153,7 @@ for (i in 1:jags_data$n_obs) {
 N_MLE = MLE_ests$N
 
 # obtain posterior summary of latent abundance (median only)
-N_mean = post_summ(post, "N")["mean",]
+N_mean = post_summ(post, "N")["50%",]
 
 # create the graphics device file
 file_device(out_file, 3.5, 3.5)

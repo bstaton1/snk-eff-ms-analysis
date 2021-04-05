@@ -31,7 +31,7 @@ make_fit_panel = function(post, param, obs, label_text) {
   segments(obs, new_summ["2.5%",], obs, new_summ["97.5%",], col = alpha("grey20", 0.3))
   
   # draw points
-  points(new_summ["mean",] ~ obs, cex = 1.2, col = alpha("grey20", 0.3), pch = 16)
+  points(new_summ["50%",] ~ obs, cex = 1.2, col = alpha("grey20", 0.3), pch = 16)
   
   # draw 1:1 line
   abline(0, 1, lwd = 1, lty = 1)
