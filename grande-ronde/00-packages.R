@@ -7,7 +7,6 @@ pkg_have = rownames(installed.packages())
 pkg_need_cran = c(
   "scales",     # for transparent colors in plotting
   "jagsUI",     # for calling JAGS through R
-  "remotes",    # for installing packages off of Github
   "stringr",    # for string manipulation
   "postpack"    # for the majority of posterior summarization
   )
