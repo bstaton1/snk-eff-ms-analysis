@@ -65,6 +65,8 @@ round(c(mean(omyk_N), range(omyk_N)), 0)  # mean and range for O. mykiss observa
 # summaries of capture probabilities
 round(quantile(rowMeans(post_subset(post, "^p1", T)), c(0.5, 0.025, 0.975)), 2)
 round(quantile(rowMeans(post_subset(post, "^p2", T)), c(0.5, 0.025, 0.975)), 2)
+round(range(post_summ(post, "^p1")["50%",]), 2)
+round(range(post_summ(post, "^p2")["50%",]), 2)
 
 # calculate posterior of correlation between p1 and p2
 p1 = post_subset(post, "^p1", T)
