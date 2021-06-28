@@ -1,5 +1,5 @@
 # snk-eff-ms-analysis
-Code and data for Staton et al.: _Accounting for uncertainty when estimating drivers of detection probability: an integrated approach illustrated with snorkel surveys for riverine fishes_
+Code and data for Staton et al.: _Accounting for uncertainty when estimating drivers of imperfect detection: an integrated approach illustrated with snorkel surveys for riverine fishes_
 
 ## Organization
 
