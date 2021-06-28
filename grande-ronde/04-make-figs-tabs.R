@@ -2,7 +2,7 @@
 # SCRIPT CREATE ALL FIGURES AND TABLES INCLUDED IN THE MANUSCRIPT MAIN-TEXT #
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: #
 
-# THIS FILE CAN ONLY BE RAN AFTER "01-fit-model-huggins.R" IS COMPLETE
+# THIS FILE CAN ONLY BE RAN AFTER "02-fit-model-integrated.R" IS COMPLETE
 
 # create a function that can produce either pdf, png, or jpg output figures depending on filename extension
 file_device = function(file_name, width, height) {
@@ -34,7 +34,7 @@ file_device = function(file_name, width, height) {
 # IN RSTUDIO: SESSION > SET WORKING DIRECTORY > TO SOURCE FILE LOCATION
 
 # figures
-out_file_type = "pdf"
+out_file_type = "jpg"
 out_file_dir = file.path("outputs", "figs")
 in_file_dir = "post-process"
 if (!dir.exists(out_file_dir)) dir.create(out_file_dir)
@@ -44,6 +44,7 @@ source(file.path("post-process", "FIG-fits.R"))
 source(file.path("post-process", "FIG-N-compare.R"))
 source(file.path("post-process", "FIG-p-effects.R"))
 source(file.path("post-process", "FIG-p-trends.R"))
+source(file.path("post-process", "FIG-resids.R"))
 
 # tables
 out_file_type = "csv"
