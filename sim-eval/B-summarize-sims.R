@@ -466,7 +466,7 @@ usr = par("usr")
 # header
 rect(0, 0.875, 1, 1, col = "black")
 text(x = 0, y = 0.975, labels = "ONLINE SUPPLEMENT TO STATON ET AL.", font = 2, pos = 4, cex = 1.2, col = "white")
-text(x = 0, y = 0.91, labels = "Accounting for uncertainty when estimating drivers of detection probability: \nAn integrated approach illustrated with snorkel surveys for riverine fishes", font = 3, pos = 4, cex = 1, col = "white")
+text(x = 0, y = 0.91, labels = "Accounting for uncertainty when estimating drivers of imperfect detection: \nan integrated approach illustrated with snorkel surveys for riverine fishes", font = 3, pos = 4, cex = 1, col = "white")
 
 # text descriptions: that apply to each page
 text(x = 0, y = 0.83, labels = 'This supplement presents output summaries from each block of simulation scenarios.\nOpen this file in your PDF viewer, select "full page view", and use page up/down to cycle through blocks.', font = 1, pos = 4, cex = 0.8)
@@ -506,7 +506,7 @@ usr = par("usr")
 # header
 rect(0, 0.875, 1, 1, col = "black")
 text(x = 0, y = 0.975, labels = "ONLINE SUPPLEMENT TO STATON ET AL.", font = 2, pos = 4, cex = 1.2, col = "white")
-text(x = 0, y = 0.91, labels = "Accounting for uncertainty when estimating drivers of detection probability: \nAn integrated approach illustrated with snorkel surveys for riverine fishes", font = 3, pos = 4, cex = 1, col = "white")
+text(x = 0, y = 0.91, labels = "Accounting for uncertainty when estimating drivers of imperfect detection: \nan integrated approach illustrated with snorkel surveys for riverine fishes", font = 3, pos = 4, cex = 1, col = "white")
 
 # table title
 text(x = 0, y = 0.85, labels = 'Scenario Descriptions', font = 2, pos = 4, cex = 0.8)
