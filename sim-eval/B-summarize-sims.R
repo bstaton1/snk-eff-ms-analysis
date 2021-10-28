@@ -346,7 +346,7 @@ sim_composite_figure = function(scenarios, main_plot_title) {
   segments(mp, cll[,psi_names], mp, cuu[,psi_names], col = col, lwd = 4)
   axis(side = 1, at = colSums(mp)/2, labels = scenarios, las = 2)
   axis(side = 4, las = 2)
-  mtext(side = 4, line = 3.75, "95% CRL\nCoverage", cex = 1)
+  mtext(side = 4, line = 3.75, "95% CRI\nCoverage", cex = 1)
   box()
   
   ### RANDOM EFFECT SD PLOT PANEL ###
