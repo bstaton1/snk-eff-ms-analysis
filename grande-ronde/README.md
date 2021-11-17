@@ -21,7 +21,7 @@ The analysis is broken into several steps, as indicated by the numbering of the 
 
 * `03-basic-stats.R`: This script takes the output of `02-fit-model-integrated.R` and calculates basic summary statistics, some of which are referenced in the text of the manuscript. These include MCMC diagnostic summaries and posterior summaries of various quantities of interest. This script does not save any output.
 
-* `04-make-figs-tabs.R`: This script sources each of the scripts found in the `post-process` subdirectory. These scripts make each individual output plot and table, allowing all relevant presentable output easily reproducible.
+* `04-make-figs-tabs.R`: This script sources each of the scripts found in the `post-process` subdirectory. These scripts make each individual output plot and table, allowing all relevant presentable output to be easily reproducible.
 
 
 
