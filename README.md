@@ -16,13 +16,11 @@ All analyses were conducted in R (or JAGS, called through R), so you must have R
 
 Several packages are used by this code: running the `00-packages.R` script found in each of the `grande-ronde` and `sim-eval` subdirectories will ensure that all of these packages are installed on your computer and loads them. Thus, a `source("00-packages.R")` call is placed at the top portion of most of the scripts found in thess subdirectories. The table below shows the R packages that were used, as well as their versions (newer or older versions of most packages should be fine).
 
-| Package Name | Version Used | Install From | How Used                                          |
-| ------------ | ------------ | ------------ | ------------------------------------------------- |
-| `scales`     | 1.1.1        | CRAN         | Creating transparent colors                       |
-| `jagsUI`     | 1.5.1        | CRAN         | Calling JAGS from within R                        |
-| `stringr`    | 1.4.0        | CRAN         | Basic string manipulations                        |
-| `reshape2`   | 1.4.4        | CRAN         | Basic data reformatting (e.g., long to wide)      |
-| `postpack`   | 0.5.2        | CRAN         | Posterior summarization                           |
-| `posterior`  | 0.1.3        | See below    | Posterior diagnostics |
-
-To install the `posterior` package, run `install.packages("posterior", repos = c("https://mc-stan.org/r-packages/", getOption("repos")))`
+| Package Name | Version Used | Install From | How Used                                     |
+| ------------ | ------------ | ------------ | -------------------------------------------- |
+| `scales`     | 1.1.1        | CRAN         | Creating transparent colors                  |
+| `jagsUI`     | 1.5.1        | CRAN         | Calling JAGS from within R                   |
+| `stringr`    | 1.4.0        | CRAN         | Basic string manipulations                   |
+| `reshape2`   | 1.4.4        | CRAN         | Basic data reformatting (e.g., long to wide) |
+| `postpack`   | 0.5.2        | CRAN         | Posterior summarization                      |
+| `posterior`  | 1.0.0        | CRAN         | Posterior diagnostics                        |
